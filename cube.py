@@ -44,26 +44,26 @@ class Cube():
                 color_name = "PURPLE"
             return eval(f"Background.{color_name}_BRIGHT")
 
-        output = "\n"
+        output = "\n "
         top_face = self.__cube[Color.WHITE.value]
         for i in range(self.__side_length):
             output += '  ' * self.__side_length
             for j in range(self.__side_length):
                 output += get_ansii(top_face[i, j]) + '  '
-            output += f"{Background.RESET_BACKGROUND}\n"
+            output += f"{Background.RESET_BACKGROUND}\n "
             
         for i in range(self.__side_length):
             for color in [Color.ORANGE, Color.GREEN, Color.RED, Color.BLUE]:
                 for j in range(self.__side_length): 
                     output += get_ansii(self.__cube[color.value][i][j]) + '  '
-            output += f"{Background.RESET_BACKGROUND}\n"
+            output += f"{Background.RESET_BACKGROUND}\n "
         
         bottom_face = self.__cube[Color.YELLOW.value]
-        for i in range(self.__side_length):
+        for i in range(self.__side_length - 1, -1, -1):
             output += '  ' * self.__side_length
             for j in range(self.__side_length):
                 output += get_ansii(bottom_face[i, j]) + '  '
-            output += f"{Background.RESET_BACKGROUND}\n"
+            output += f"{Background.RESET_BACKGROUND}\n "
         
         return output
 
