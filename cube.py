@@ -1,8 +1,15 @@
 from enum import Enum
+import re
+from sys import argv
 import numpy as np
 from pynterface import Background
 
-class Color(Enum):
+class Face(Enum):
+    """ 
+    Enums for colors.
+    These also apply for positions, so if the cube is 
+    rotated, GREEN will still represent the front.
+    """
     GREEN = 0
     ORANGE = 1
     BLUE = 2
@@ -23,45 +30,49 @@ class Cube():
     0 [ ][ ][ ]
     1 [ ][ ][ ]
     2 [ ][ ][ ]
-    Applies for each face on the side.
+    Applies for each face on the side when placed on the bottom.
+    Additionally applies for white, when viewed with green in front.
+    For yellow, it is reversed, so that the y-indeces match white's
     """
 
-    def __init__(self, side_length: int = 3, scramble: list[int] = None):
+    def __init__(self, side_length: int = 3, scramble: list[np.ndarray] = None):
         if scramble is None:
             self.__cube = [
                         np.array([[c] * side_length for _ in range(side_length)])
-                        for c in list(Color)
+                        for c in list(Face)
                     ]
         else: 
             self.__cube = scramble
-        self.__side_length = side_length
+        self.N = side_length
 
     def __str__(self):
 
-        def get_ansii(color: Color):
+        def get_ansii(color: Face) -> str:
             color_name = str(color).split('.')[-1]
-            if color_name == "ORANGE":
-                color_name = "PURPLE"
-            return eval(f"Background.{color_name}_BRIGHT")
+            match color_name:
+                case "ORANGE":
+                    return Background.RGB((255, 165, 0))
+                case other: 
+                    return eval(f"Background.{other}_BRIGHT")
 
         output = "\n "
-        top_face = self.__cube[Color.WHITE.value]
-        for i in range(self.__side_length):
-            output += '  ' * self.__side_length
-            for j in range(self.__side_length):
+        top_face = self.__cube[Face.WHITE.value]
+        for i in range(self.N):
+            output += '  ' * self.N
+            for j in range(self.N):
                 output += get_ansii(top_face[i, j]) + '  '
             output += f"{Background.RESET_BACKGROUND}\n "
             
-        for i in range(self.__side_length):
-            for color in [Color.ORANGE, Color.GREEN, Color.RED, Color.BLUE]:
-                for j in range(self.__side_length): 
+        for i in range(self.N):
+            for color in [Face.ORANGE, Face.GREEN, Face.RED, Face.BLUE]:
+                for j in range(self.N): 
                     output += get_ansii(self.__cube[color.value][i][j]) + '  '
             output += f"{Background.RESET_BACKGROUND}\n "
         
-        bottom_face = self.__cube[Color.YELLOW.value]
-        for i in range(self.__side_length - 1, -1, -1):
-            output += '  ' * self.__side_length
-            for j in range(self.__side_length):
+        bottom_face = self.__cube[Face.YELLOW.value]
+        for i in range(self.N - 1, -1, -1):
+            output += '  ' * self.N
+            for j in range(self.N):
                 output += get_ansii(bottom_face[i, j]) + '  '
             output += f"{Background.RESET_BACKGROUND}\n "
         
@@ -71,18 +82,95 @@ class Cube():
     def cube(self):
         return self.__cube.copy()
 
-    def turn(move: str, dist: int, layers: int = 1):
+    def parse(self, moves: str):
+        move_list = re.split(r"(?=[A-Z])", moves)
+        for m in filter(lambda x: bool(x), move_list):
+            if len(m) == 1:
+                dist = 1
+            elif m[1] == '2':
+                dist = 2
+            elif m[1] == "'":
+                dist = -1
+            self.turn(m[0], dist, 1)
+        
+    def turn(self, move: str, dist: int, layers: int = 1):
         """ Turns the cube depending on the given measure. """
-        assert move.upper() in ['R', 'L', 'F', 'U', 'D', 'B']
-
-    def turn_right(self, dist: int, layers: int):
+        assert move in ['R', 'L', 'F', 'U', 'D', 'B']
+        move_map = {
+            'R': self.turn_right,
+            'L': self.turn_left,
+            'U': self.turn_up,
+            'D': self.turn_down
+        }
+        move_map[move](dist, layers)
+        
+    def turn_right(self, dist: int, layers: int = 1):
         """ Turns the right side of the cube """
-        assert layers >= self.__side_length
+        assert layers <= self.N
         dist %= 4
+        self.__rotate(Face.RED, dist)
         for _ in range(dist):
-            self.__cube
+            front_top_back_down = [
+                self.__cube[c.value][:, self.N-layers:self.N].copy()
+                if c != Face.BLUE else 
+                np.flip(self.__cube[c.value][:, 0:layers].copy(), axis=1) 
+                for c in [Face.GREEN, Face.WHITE, Face.BLUE, Face.YELLOW]
+            ]
+            for i, face in enumerate([Face.WHITE, Face.BLUE, Face.YELLOW, Face.GREEN]):
+                if i % 2:
+                    front_top_back_down[i] = np.flip(front_top_back_down[i], axis=0)
+                if face == Face.BLUE:
+                    self.__cube[face.value][:, 0:layers] = np.flip(front_top_back_down[i], axis=1)
+                else:
+                    self.__cube[face.value][:, self.N-layers:self.N] = front_top_back_down[i]
+    
+    def turn_left(self, dist: int, layers: int = 1):
+        """ Turns the left side of the cube """
+        assert layers <= self.N
+        dist %= 4
+        self.__rotate(Face.ORANGE, dist)
+        for _ in range(dist):
+            front_top_back_down = [
+                self.__cube[c.value][:, 0:layers].copy()
+                if c != Face.BLUE else 
+                np.flip(self.__cube[c.value][:, self.N-layers:self.N].copy(), axis=1) 
+                for c in [Face.GREEN, Face.WHITE, Face.BLUE, Face.YELLOW]
+            ]
+            for i, face in enumerate([Face.YELLOW, Face.GREEN, Face.WHITE, Face.BLUE]):
+                if i % 2 == 0:
+                    front_top_back_down[i] = np.flip(front_top_back_down[i], axis=0)
+                if face == Face.BLUE:
+                    self.__cube[face.value][:, self.N-layers:self.N] = np.flip(front_top_back_down[i], axis=1)
+                else:
+                    self.__cube[face.value][:, 0:layers] = front_top_back_down[i]
 
-    def __rotate(self, face: Color, turns: int = 1):
+    def turn_up(self, dist: int, layers: int = 1):
+        """ Turns the top side of the cube """
+        assert layers <= self.N
+        dist %= 4
+        self.__rotate(Face.WHITE, dist)
+        for _ in range(dist):
+            front_right_back_left = [
+                self.__cube[c.value][0:layers, :].copy()
+                for c in [Face.GREEN, Face.ORANGE, Face.BLUE, Face.RED]
+            ]
+            for i, face in enumerate([Face.ORANGE, Face.BLUE, Face.RED, Face.GREEN]):
+                self.__cube[face.value][0:layers, :] = front_right_back_left[i]
+
+    def turn_down(self, dist: int, layers: int = 1):
+        """ Turns the down side of the cube """
+        assert layers <= self.N
+        dist %= 4
+        self.__rotate(Face.YELLOW, -dist)
+        for _ in range(dist):
+            front_right_back_left = [
+                self.__cube[c.value][self.N-layers:self.N, :].copy()
+                for c in [Face.GREEN, Face.ORANGE, Face.BLUE, Face.RED]
+            ]
+            for i, face in enumerate([Face.RED, Face.GREEN, Face.ORANGE, Face.BLUE]):
+                self.__cube[face.value][self.N-layers:self.N, :] = front_right_back_left[i]
+
+    def __rotate(self, face: Face, turns: int = 1):
         """
         Arguments:
             face: the color to rotate
@@ -95,5 +183,6 @@ class Cube():
 
 
 if __name__ == "__main__":
-    a = Cube(side_length=4)
+    a = Cube(side_length=5)
+    a.parse(argv[1])
     print(a)
