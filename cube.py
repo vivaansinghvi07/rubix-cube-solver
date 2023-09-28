@@ -1,7 +1,6 @@
 from enum import Enum
 import re
 from sys import argv
-from time import perf_counter
 import numpy as np
 from pynterface import Background
 
@@ -110,10 +109,10 @@ class Cube():
                     dist = 2
                 elif m[-1] == "'":
                     dist = -1
-                if letter.islower():
-                    layer = 2 
-                elif m[0].isnumeric():
+                if m[0].isnumeric():
                     layer = int(m[0])
+            if letter.islower():
+                layer = 2
             self.turn(letter.upper(), dist, layer, width)
         
     def turn(self, move: str, dist: int, layer: int = 1, width: int = 1) -> None:
@@ -344,6 +343,6 @@ class Cube():
 
 
 if __name__ == "__main__":
-    a = Cube(side_length=3)
-    a.parse(argv[1], False)
+    a = Cube(side_length=int(argv[1]))
+    a.parse(argv[2], False)
     print(a)
