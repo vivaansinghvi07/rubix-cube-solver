@@ -261,9 +261,9 @@ class Cube():
             width: number of layers to turn, going down from the layer
         
           w  ->  r  ->  y  ->  o
-         1 2    0 3    1 2    5 8
-         4 5 -> 1 4 -> 4 5 -> 4 7
-         7 8    2 5    7 8    3 6
+         2 1    0 3    2 1    5 8
+         5 4 -> 1 4 -> 5 4 -> 4 7
+         8 7    2 5    8 7    3 6
         """
         assert layer - width >= 0, "Invalid turn: Too wide given the layer"
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
@@ -294,16 +294,16 @@ class Cube():
 
     def turn_back(self, dist: int, layer: int = 1, width: int = 1):
         """ 
-        Turns the front side of the cube 
+        Turns the back side of the cube 
         Arguments:
             dist: number of clockwise turns
-            layer: layer number from bottom side for the top-most layer 
-            width: number of layers to turn, going down from the layer
+            layer: layer number from top side for the bottom-most layer 
+            width: number of layers to turn, going up from the layer
         
           w  ->  r  ->  y  ->  o
-         1 2    0 3    1 2    5 8
-         4 5 -> 1 4 -> 4 5 -> 4 7
-         7 8    2 5    7 8    3 6
+         0 1    3 6    0 1    2 5
+         3 4 -> 4 7 -> 3 4 -> 1 4
+         6 7    5 8    6 7    0 3
         """
         assert layer - width >= 0, "Invalid turn: Too wide given the layer"
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
@@ -336,11 +336,10 @@ class Cube():
         """
         Arguments:
             face: the color to rotate
+            turns: the number of turns to execute
         """
-
-        turns %= 4
         self.__cube[face.value] = np.rot90(
-                self.__cube[face.value], -turns
+                self.__cube[face.value], -(turns % 4)
             )
 
 
