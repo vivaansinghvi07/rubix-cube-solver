@@ -31,17 +31,25 @@ class Cube():
     0 [ ][ ][ ]
     1 [ ][ ][ ]
     2 [ ][ ][ ]
+    
     Applies for each face on the side when placed on the bottom.
     Additionally applies for white, when viewed with green in front.
     For yellow, it is reversed, so that the y-indeces match white's
+
+    0 3 6
+    1 4 7
+    2 5 8
+    
+    The documentation of the turns and other things will assume a 3x3 
+    cube, with the above numbering scheme.
     """
 
     def __init__(self, side_length: int = 3, scramble: list[np.ndarray] = None):
         if scramble is None:
             self.__cube = [
-                        np.array([[c] * side_length for _ in range(side_length)])
-                        for c in list(Face)
-                    ]
+                np.array([[c] * side_length for _ in range(side_length)])
+                for c in list(Face)
+            ]
         else: 
             self.__cube = scramble
         self.N = side_length
@@ -83,29 +91,44 @@ class Cube():
     def cube(self):
         return self.__cube.copy()
 
-    def parse(self, moves: str):
-        move_list = re.split(r"(?=[A-Z])", moves)
+    def parse(self, moves: str, no_spaces: bool = True):
+        """
+        Parses a list of moves given as a string with each move seperated by a space.
+        The no_spaces argument can be passed to parse without considering spaces,
+        but requires the cube to be 5x5x5 or less.
+        """
+        if no_spaces:
+            assert self.N <= 5
+            move_list = re.split(r"(?=[A-Z])", moves)
+        else:
+            move_list = moves.split()
         for m in filter(lambda x: bool(x), move_list):
-            if len(m) == 1:
-                dist = 1
-            elif m[1] == '2':
-                dist = 2
-            elif m[1] == "'":
-                dist = -1
-            self.turn(m[0], dist, 1)
+            dist = width = layer = 1
+            letter = re.search(r'[A-Za-z]', m).group()
+            if len(m) != 1:
+                if m[-1] == '2':
+                    dist = 2
+                elif m[-1] == "'":
+                    dist = -1
+                if letter.islower():
+                    layer = 2 
+                elif m[0].isnumeric():
+                    layer = int(m[0])
+            self.turn(letter.upper(), dist, layer, width)
         
-    def turn(self, move: str, dist: int, layers: int = 1):
+    def turn(self, move: str, dist: int, layer: int = 1, width: int = 1) -> None:
         """ Turns the cube depending on the given measure. """
-        assert move in ['R', 'L', 'F', 'U', 'D', 'B']
         move_map = {
             'R': self.turn_right,
             'L': self.turn_left,
             'U': self.turn_up,
-            'D': self.turn_down
+            'D': self.turn_down,
+            'F': self.turn_front,
+            'B': self.turn_back
         }
-        move_map[move](dist, layers)
+        move_map[move](dist, layer, width)
         
-    def turn_right(self, dist: int, layer: int = 1, width: int = 1):
+    def turn_right(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
         Turns the right side of the cube.
         Arguments:
@@ -114,18 +137,22 @@ class Cube():
             width: number of layers to turn, going right from the layer
 
          g  ->  w  ->  b  ->  y
-        0 3    0 3    5 2    2 5 
-        1 4 -> 1 4 -> 4 1 -> 1 4
-        2 5    2 5    3 0    0 3
+        3 6    3 6    8 5    8 5 
+        4 7 -> 4 7 -> 7 4 -> 7 4
+        5 8    5 8    6 3    6 3
         """
+        assert layer - width >= 0, "Invalid turn: Too wide given the layer"
+        assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
-        if layer - width:
+        if layer - width == 0:
             self.__rotate(Face.RED, dist)
+        if layer == self.N:
+            self.__rotate(Face.ORANGE, -dist)
         for _ in range(dist):
             front_top_back_down = [
-                self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
-                if c != Face.BLUE else 
                 np.flip(self.__cube[c.value][:, layer-width:layer].copy(), axis=1) 
+                if c == Face.BLUE else 
+                self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
                 for c in [Face.GREEN, Face.WHITE, Face.BLUE, Face.YELLOW]
             ]
             for i, face in enumerate([Face.WHITE, Face.BLUE, Face.YELLOW, Face.GREEN]):
@@ -136,7 +163,7 @@ class Cube():
                 else:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = front_top_back_down[i]
     
-    def turn_left(self, dist: int, layer: int = 1, width: int = 1):
+    def turn_left(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
         Turns the left side of the cube.
         Arguments:
@@ -145,18 +172,22 @@ class Cube():
             width: number of layers to turn, going left from the layer
 
          g  ->  y  ->  b  ->  w
-        0 3    2 5    5 2    0 3 
-        1 4 -> 1 4 -> 4 1 -> 1 4
-        2 5    0 3    3 0    2 5
+        0 3    8 5    8 5    0 3 
+        1 4 -> 7 4 -> 7 4 -> 1 4
+        2 5    6 3    6 3    2 5
         """
+        assert layer - width >= 0, "Invalid turn: Too wide given the layer"
+        assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0:
             self.__rotate(Face.ORANGE, dist)
+        if layer == self.N:
+            self.__rotate(Face.RED, -dist)
         for _ in range(dist):
             front_top_back_down = [
-                self.__cube[c.value][:, layer-width:layer].copy()
-                if c != Face.BLUE else 
                 np.flip(self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy(), axis=1) 
+                if c == Face.BLUE else 
+                self.__cube[c.value][:, layer-width:layer].copy()
                 for c in [Face.GREEN, Face.WHITE, Face.BLUE, Face.YELLOW]
             ]
             for i, face in enumerate([Face.YELLOW, Face.GREEN, Face.WHITE, Face.BLUE]):
@@ -167,39 +198,139 @@ class Cube():
                 else:
                     self.__cube[face.value][:, layer-width:layer] = front_top_back_down[i]
 
-    def turn_up(self, dist: int, layers: int = 1):
-        """ Turns the top side of the cube """
-        assert layers <= self.N
+    def turn_up(self, dist: int, layer: int = 1, width: int = 1) -> None:
+        """ 
+        Turns the top side of the cube.
+        Arguments:
+            dist: number of clockwise turns
+            layer: layer number from top side for the bottom-most layer 
+            width: number of layers to turn, going up from the layer
+
+          g   ->   r   ->   b   ->   o
+        0 1 2    0 1 2    0 1 2    0 1 2
+        3 4 5 -> 3 4 5 -> 3 4 5 -> 3 4 5 
+        """
+        assert layer - width >= 0, "Invalid turn: Too wide given the layer"
+        assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
-        self.__rotate(Face.WHITE, dist)
+        if layer - width == 0: 
+            self.__rotate(Face.WHITE, dist)
+        if layer == 0:
+            self.__rotate(Face.YELLOW, dist)
         for _ in range(dist):
             front_right_back_left = [
-                self.__cube[c.value][0:layers, :].copy()
+                self.__cube[c.value][layer-width:layer, :].copy()
                 for c in [Face.GREEN, Face.ORANGE, Face.BLUE, Face.RED]
             ]
             for i, face in enumerate([Face.ORANGE, Face.BLUE, Face.RED, Face.GREEN]):
-                self.__cube[face.value][0:layers, :] = front_right_back_left[i]
+                self.__cube[face.value][layer-width:layer, :] = front_right_back_left[i]
 
-    def turn_down(self, dist: int, layers: int = 1):
-        """ Turns the down side of the cube """
-        assert layers <= self.N
+    def turn_down(self, dist: int, layer: int = 1, width: int = 1) -> None:
+        """ 
+        Turns the bottom side of the cube.
+        Arguments:
+            dist: number of clockwise turns
+            layer: layer number from bottom side for the top-most layer 
+            width: number of layers to turn, going down from the layer
+
+          g   ->   r   ->   b   ->   o
+        3 4 5    3 4 5    3 4 5    3 4 5
+        6 7 8 -> 6 7 8 -> 6 7 8 -> 6 7 8 
+        """
+        assert layer - width >= 0, "Invalid turn: Too wide given the layer"
+        assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
-        self.__rotate(Face.YELLOW, -dist)
+        if layer - width == 0:
+            self.__rotate(Face.YELLOW, -dist)
+        if layer == 0:
+            self.__rotate(Face.WHITE, -dist)
         for _ in range(dist):
             front_right_back_left = [
-                self.__cube[c.value][self.N-layers:self.N, :].copy()
+                self.__cube[c.value][self.N-layer:self.N-layer+width, :].copy()
                 for c in [Face.GREEN, Face.ORANGE, Face.BLUE, Face.RED]
             ]
             for i, face in enumerate([Face.RED, Face.GREEN, Face.ORANGE, Face.BLUE]):
-                self.__cube[face.value][self.N-layers:self.N, :] = front_right_back_left[i]
+                self.__cube[face.value][self.N-layer:self.N-layer+width, :] = front_right_back_left[i]
 
-    def turn_front(self, dist: int, layers: int = 1):
-        """ Turns the front side of the cube """
-        assert layers <= self.N
+    def turn_front(self, dist: int, layer: int = 1, width: int = 1):
+        """ 
+        Turns the front side of the cube 
+        Arguments:
+            dist: number of clockwise turns
+            layer: layer number from bottom side for the top-most layer 
+            width: number of layers to turn, going down from the layer
+        
+          w  ->  r  ->  y  ->  o
+         1 2    0 3    1 2    5 8
+         4 5 -> 1 4 -> 4 5 -> 4 7
+         7 8    2 5    7 8    3 6
+        """
+        assert layer - width >= 0, "Invalid turn: Too wide given the layer"
+        assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
-        self.__rotate(Face.GREEN)
+        if layer - width == 0:
+            self.__rotate(Face.GREEN, dist)
+        if layer == 0:
+            self.__rotate(Face.BLUE, -dist)
         for _ in range(dist):
-            pass     
+            top_right_bottom_left = [
+                np.transpose(
+                    self.__cube[c.value][:, layer-width:layer].copy()
+                        if c == Face.RED else 
+                        self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
+                        if c == Face.ORANGE else 
+                        self.__cube[c.value][self.N-layer:self.N-layer+width, :].copy(),
+                    (1, 0)
+                )
+                for c in [Face.WHITE, Face.RED, Face.YELLOW, Face.ORANGE]
+            ]
+            for i, face in enumerate([Face.RED, Face.YELLOW, Face.ORANGE, Face.WHITE]):
+                if face == Face.RED:
+                    self.__cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
+                elif face == Face.ORANGE:
+                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
+                else:
+                    self.__cube[face.value][self.N-layer:self.N-layer+width, :] = np.flip(top_right_bottom_left[i], axis=1)
+
+    def turn_back(self, dist: int, layer: int = 1, width: int = 1):
+        """ 
+        Turns the front side of the cube 
+        Arguments:
+            dist: number of clockwise turns
+            layer: layer number from bottom side for the top-most layer 
+            width: number of layers to turn, going down from the layer
+        
+          w  ->  r  ->  y  ->  o
+         1 2    0 3    1 2    5 8
+         4 5 -> 1 4 -> 4 5 -> 4 7
+         7 8    2 5    7 8    3 6
+        """
+        assert layer - width >= 0, "Invalid turn: Too wide given the layer"
+        assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
+        dist %= 4
+        if layer - width == 0:
+            self.__rotate(Face.BLUE, dist)
+        if layer == 0:
+            self.__rotate(Face.GREEN, -dist)
+        for _ in range(dist):
+            top_right_bottom_left = [
+                np.transpose(
+                    self.__cube[c.value][:, layer-width:layer].copy()
+                        if c == Face.ORANGE else 
+                        self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
+                        if c == Face.RED else 
+                        np.flip(self.__cube[c.value][layer-width:layer, :].copy(), axis=1),
+                    (1, 0)
+                )
+                for c in [Face.WHITE, Face.RED, Face.YELLOW, Face.ORANGE]
+            ]
+            for i, face in enumerate([Face.ORANGE, Face.WHITE, Face.RED, Face.YELLOW]):
+                if face == Face.ORANGE:
+                    self.__cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
+                elif face == Face.RED:
+                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
+                else:
+                    self.__cube[face.value][layer-width:layer, :] = top_right_bottom_left[i]
 
     def __rotate(self, face: Face, turns: int = 1):
         """
@@ -214,9 +345,6 @@ class Cube():
 
 
 if __name__ == "__main__":
-    a = Cube(side_length=5)
-    start = perf_counter()
-    a.turn_right(1, 2, 1)
-    print(a)
-    a.turn_right(1, 2, 2)
+    a = Cube(side_length=3)
+    a.parse(argv[1], False)
     print(a)
