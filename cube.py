@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import Enum
 import re
 from sys import argv
@@ -16,6 +17,9 @@ class Face(Enum):
     RED = 3
     WHITE = 4
     YELLOW = 5
+
+    def __lt__(self, other: Face):
+        return self.value < other.value
 
 class Cube():
 
@@ -43,7 +47,7 @@ class Cube():
     cube, with the above numbering scheme.
     """
 
-    def __init__(self, side_length: int = 3, scramble: list[np.ndarray] = None):
+    def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
         if scramble is None:
             self.__cube = [
                 np.array([[c] * side_length for _ in range(side_length)])
@@ -86,9 +90,9 @@ class Cube():
         
         return output
 
-    @property
-    def cube(self):
-        return self.__cube.copy()
+    def get_cube(self):
+        """ Returns the mutable array of the cube """
+        return self.__cube
 
     def parse(self, moves: str, no_spaces: bool = True):
         """
@@ -109,8 +113,8 @@ class Cube():
                     dist = 2
                 elif m[-1] == "'":
                     dist = -1
-                if m[0].isnumeric():
-                    layer = int(m[0])
+                if (nums:=re.match(r'[1-9][0-9]*', m)):
+                    layer = int(nums.group())
             if letter.islower():
                 layer = 2
             self.turn(letter.upper(), dist, layer, width)
@@ -118,16 +122,16 @@ class Cube():
     def turn(self, move: str, dist: int, layer: int = 1, width: int = 1) -> None:
         """ Turns the cube depending on the given measure. """
         move_map = {
-            'R': self.turn_right,
-            'L': self.turn_left,
-            'U': self.turn_up,
-            'D': self.turn_down,
-            'F': self.turn_front,
-            'B': self.turn_back
+            'R': self.__turn_right,
+            'L': self.__turn_left,
+            'U': self.__turn_up,
+            'D': self.__turn_down,
+            'F': self.__turn_front,
+            'B': self.__turn_back
         }
         move_map[move](dist, layer, width)
         
-    def turn_right(self, dist: int, layer: int = 1, width: int = 1) -> None:
+    def __turn_right(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
         Turns the right side of the cube.
         Arguments:
@@ -162,7 +166,7 @@ class Cube():
                 else:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = front_top_back_down[i]
     
-    def turn_left(self, dist: int, layer: int = 1, width: int = 1) -> None:
+    def __turn_left(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
         Turns the left side of the cube.
         Arguments:
@@ -197,7 +201,7 @@ class Cube():
                 else:
                     self.__cube[face.value][:, layer-width:layer] = front_top_back_down[i]
 
-    def turn_up(self, dist: int, layer: int = 1, width: int = 1) -> None:
+    def __turn_up(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
         Turns the top side of the cube.
         Arguments:
@@ -224,7 +228,7 @@ class Cube():
             for i, face in enumerate([Face.ORANGE, Face.BLUE, Face.RED, Face.GREEN]):
                 self.__cube[face.value][layer-width:layer, :] = front_right_back_left[i]
 
-    def turn_down(self, dist: int, layer: int = 1, width: int = 1) -> None:
+    def __turn_down(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
         Turns the bottom side of the cube.
         Arguments:
@@ -251,7 +255,7 @@ class Cube():
             for i, face in enumerate([Face.RED, Face.GREEN, Face.ORANGE, Face.BLUE]):
                 self.__cube[face.value][self.N-layer:self.N-layer+width, :] = front_right_back_left[i]
 
-    def turn_front(self, dist: int, layer: int = 1, width: int = 1):
+    def __turn_front(self, dist: int, layer: int = 1, width: int = 1):
         """ 
         Turns the front side of the cube 
         Arguments:
@@ -291,7 +295,7 @@ class Cube():
                 else:
                     self.__cube[face.value][self.N-layer:self.N-layer+width, :] = np.flip(top_right_bottom_left[i], axis=1)
 
-    def turn_back(self, dist: int, layer: int = 1, width: int = 1):
+    def __turn_back(self, dist: int, layer: int = 1, width: int = 1):
         """ 
         Turns the back side of the cube 
         Arguments:
@@ -341,6 +345,31 @@ class Cube():
                 self.__cube[face.value], -(turns % 4)
             )
 
+    def get_3x3(self) -> Cube:
+        """
+        Gets the 3x3 form of the cube.
+        Throws an error if: 
+            the cube is smaller than a 3x3 
+            the cube cannot be simplified
+        """
+        assert self.N > 2, "2x2 cannot be converted to 3x3"
+
+        def get_scalar(x: np.ndarray) -> Face:
+            assert x.shape == (1,), "Cube could not be converted to a 3x3"
+            return x[0]
+
+        output = Cube()
+        mod_cube = output.get_cube()
+        for i in range(6):
+            current_side = self.__cube[i]
+            for corner_x, corner_y in [(0, -1), (0, 0), (-1, 0), (-1, -1)]:
+                mod_cube[i][corner_y, corner_x] = current_side[corner_y, corner_x]
+            for edge_y, edge_x in [(0, 1), (1, 0), (1, -1), (-1, 1)]:
+                mod_cube[i][edge_y, edge_x] = get_scalar(np.unique(current_side[1:-1, edge_x] 
+                                                                   if edge_y == 1 else 
+                                                                   current_side[edge_y, 1:-1]))
+            mod_cube[i][1, 1] = get_scalar(np.unique(current_side[1:-1, 1:-1]))
+        return output
 
 if __name__ == "__main__":
     a = Cube(side_length=int(argv[1]))
