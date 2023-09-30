@@ -1,4 +1,5 @@
 from __future__ import annotations
+from utils import get_move
 import random
 from enum import Enum
 import re
@@ -48,6 +49,12 @@ class Cube():
     The documentation of the turns and other things will assume a 3x3 
     cube, with the above numbering scheme.
     """
+    
+    @staticmethod
+    def parse_commandline() -> Cube:
+        cube = Cube(int(argv[1]))
+        cube.parse(argv[2])
+        return cube
 
     def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
         if scramble is None:
@@ -96,7 +103,7 @@ class Cube():
         """ Returns the mutable array of the cube """
         return self.__cube
 
-    def parse(self, moves: str, no_spaces: bool = True):
+    def parse(self, moves: str, no_spaces: bool = False):
         """
         Parses a list of moves given as a string with each move seperated by a space.
         The no_spaces argument can be passed to parse without considering spaces,
@@ -125,7 +132,7 @@ class Cube():
                 layer = 2
             self.turn(letter.upper(), dist, layer, width)
         
-    def turn(self, move: str, dist: int, layer: int = 1, width: int = 1) -> None:
+    def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: list[str] | None = None) -> None:
         """ Turns the cube depending on the given measure. """
         move_map = {
             'R': self.__turn_right,
@@ -136,6 +143,8 @@ class Cube():
             'B': self.__turn_back
         }
         move_map[move](dist, layer, width)
+        if movelist is not None:
+            movelist.extend(get_move(move, dist, layer, width))
         
     def __turn_right(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
@@ -379,8 +388,7 @@ class Cube():
 
 if __name__ == "__main__":
     if len(argv) > 1:
-        a = Cube(side_length=int(argv[1]))
-        a.parse(argv[2], False)
+        a = Cube.parse_commandline()
         print(a)
     else:
         with open("./example_scrambles.json", "r") as f:
