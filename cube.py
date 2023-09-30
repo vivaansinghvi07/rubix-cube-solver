@@ -282,7 +282,7 @@ class Cube():
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
-                    self.__cube[c.value][:, layer-width:layer].copy()
+                    np.flip(self.__cube[c.value][:, layer-width:layer].copy(), axis=1)
                         if c == Face.RED else 
                         self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
                         if c == Face.ORANGE else 
@@ -293,7 +293,7 @@ class Cube():
             ]
             for i, face in enumerate([Face.RED, Face.YELLOW, Face.ORANGE, Face.WHITE]):
                 if face == Face.RED:
-                    self.__cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
+                    self.__cube[face.value][:, layer-width:layer] = np.flip(top_right_bottom_left[i], axis=1)
                 elif face == Face.ORANGE:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
                 else:
@@ -324,7 +324,7 @@ class Cube():
                 np.transpose(
                     self.__cube[c.value][:, layer-width:layer].copy()
                         if c == Face.ORANGE else 
-                        self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
+                        np.flip(self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy(), axis=1)
                         if c == Face.RED else 
                         np.flip(self.__cube[c.value][layer-width:layer, :].copy(), axis=1),
                     (1, 0)
@@ -335,7 +335,7 @@ class Cube():
                 if face == Face.ORANGE:
                     self.__cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
                 elif face == Face.RED:
-                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
+                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(top_right_bottom_left[i], axis=1)
                 else:
                     self.__cube[face.value][layer-width:layer, :] = top_right_bottom_left[i]
 
