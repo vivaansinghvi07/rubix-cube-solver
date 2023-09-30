@@ -1,6 +1,8 @@
 from __future__ import annotations
+import random
 from enum import Enum
 import re
+import json
 from sys import argv
 import numpy as np
 from pynterface import Background
@@ -376,6 +378,14 @@ class Cube():
         return output
 
 if __name__ == "__main__":
-    a = Cube(side_length=int(argv[1]))
-    a.parse(argv[2], False)
-    print(a)
+    if len(argv) > 1:
+        a = Cube(side_length=int(argv[1]))
+        a.parse(argv[2], False)
+        print(a)
+    else:
+        with open("./example_scrambles.json", "r") as f:
+            scrambles = json.load(f)["scrambles"]
+        selected = scrambles[random.randint(0, len(scrambles)-1)]
+        a = Cube(int(selected["size"]))
+        a.parse(selected["moves"], False)
+        print(a)
