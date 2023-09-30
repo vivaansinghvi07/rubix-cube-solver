@@ -105,7 +105,7 @@ class Cube():
             move_list = re.split(r"(?=[A-Z])", moves)
         else:
             move_list = moves.split()
-        for m in filter(lambda x: bool(x), move_list):
+        for m in filter(lambda x: bool(x.strip()), move_list):
             dist = width = layer = 1
             letter = re.search(r'[A-Za-z]', m).group()
             if len(m) != 1:
@@ -115,6 +115,10 @@ class Cube():
                     dist = -1
                 if (nums:=re.match(r'[1-9][0-9]*', m)):
                     layer = int(nums.group())
+                elif 'w' in m:
+                    layer = 2
+                if 'w' in m: 
+                    width = layer
             if letter.islower():
                 layer = 2
             self.turn(letter.upper(), dist, layer, width)
