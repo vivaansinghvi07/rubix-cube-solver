@@ -1,28 +1,12 @@
 from __future__ import annotations
 from utils import get_move
 import random
-from enum import Enum
+from enums import Face, Color
 import re
 import json
 from sys import argv
 import numpy as np
 from pynterface import Background
-
-class Face(Enum):
-    """ 
-    Enums for colors.
-    These also apply for positions, so if the cube is 
-    rotated, GREEN will still represent the front.
-    """
-    GREEN = 0
-    ORANGE = 1
-    BLUE = 2
-    RED = 3
-    WHITE = 4
-    YELLOW = 5
-
-    def __lt__(self, other: Face):
-        return self.value < other.value
 
 class Cube():
 
@@ -51,7 +35,7 @@ class Cube():
     """
     
     @staticmethod
-    def parse_commandline() -> Cube:
+    def from_commandline() -> Cube:
         cube = Cube(int(argv[1]))
         cube.parse(argv[2])
         return cube
@@ -60,7 +44,7 @@ class Cube():
         if scramble is None:
             self.__cube = [
                 np.array([[c] * side_length for _ in range(side_length)])
-                for c in list(Face)
+                for c in list(Color)
             ]
         else: 
             self.__cube = scramble
@@ -68,7 +52,7 @@ class Cube():
 
     def __str__(self):
 
-        def get_ansii(color: Face) -> str:
+        def get_ansii(color: Color) -> str:
             color_name = str(color).split('.')[-1]
             match color_name:
                 case "ORANGE":
@@ -77,7 +61,7 @@ class Cube():
                     return eval(f"Background.{other}_BRIGHT")
 
         output = "\n "
-        top_face = self.__cube[Face.WHITE.value]
+        top_face = self.__cube[Face.TOP.value]
         for i in range(self.N):
             output += '  ' * self.N
             for j in range(self.N):
@@ -85,12 +69,12 @@ class Cube():
             output += f"{Background.RESET_BACKGROUND}\n "
             
         for i in range(self.N):
-            for color in [Face.ORANGE, Face.GREEN, Face.RED, Face.BLUE]:
+            for color in [Face.LEFT, Face.FRONT, Face.RIGHT, Face.BACK]:
                 for j in range(self.N): 
                     output += get_ansii(self.__cube[color.value][i][j]) + '  '
             output += f"{Background.RESET_BACKGROUND}\n "
         
-        bottom_face = self.__cube[Face.YELLOW.value]
+        bottom_face = self.__cube[Face.BOTTOM.value]
         for i in range(self.N - 1, -1, -1):
             output += '  ' * self.N
             for j in range(self.N):
@@ -116,7 +100,7 @@ class Cube():
             move_list = moves.split()
         for m in filter(lambda x: bool(x.strip()), move_list):
             dist = width = layer = 1
-            letter = re.search(r'[A-Za-z]', m).group()
+            letter = re.search(r'[rfdublRFDUBL]', m).group()
             if len(m) != 1:
                 if m[-1] == '2':
                     dist = 2
@@ -129,7 +113,7 @@ class Cube():
                 if 'w' in m: 
                     width = layer
             if letter.islower():
-                layer = 2
+                layer = width = 2
             self.turn(letter.upper(), dist, layer, width)
         
     def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: list[str] | None = None) -> None:
@@ -163,20 +147,20 @@ class Cube():
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0:
-            self.__rotate(Face.RED, dist)
+            self.__rotate(Face.RIGHT, dist)
         if layer == self.N:
-            self.__rotate(Face.ORANGE, -dist)
+            self.__rotate(Face.LEFT, -dist)
         for _ in range(dist):
             front_top_back_down = [
                 np.flip(self.__cube[c.value][:, layer-width:layer].copy(), axis=1) 
-                if c == Face.BLUE else 
+                if c == Face.BACK else 
                 self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
-                for c in [Face.GREEN, Face.WHITE, Face.BLUE, Face.YELLOW]
+                for c in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
             ]
-            for i, face in enumerate([Face.WHITE, Face.BLUE, Face.YELLOW, Face.GREEN]):
+            for i, face in enumerate([Face.TOP, Face.BACK, Face.BOTTOM, Face.FRONT]):
                 if i % 2:
                     front_top_back_down[i] = np.flip(front_top_back_down[i], axis=0)
-                if face == Face.BLUE:
+                if face == Face.BACK:
                     self.__cube[face.value][:, layer-width:layer] = np.flip(front_top_back_down[i], axis=1)
                 else:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = front_top_back_down[i]
@@ -198,20 +182,20 @@ class Cube():
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0:
-            self.__rotate(Face.ORANGE, dist)
+            self.__rotate(Face.LEFT, dist)
         if layer == self.N:
-            self.__rotate(Face.RED, -dist)
+            self.__rotate(Face.RIGHT, -dist)
         for _ in range(dist):
             front_top_back_down = [
                 np.flip(self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy(), axis=1) 
-                if c == Face.BLUE else 
+                if c == Face.BACK else 
                 self.__cube[c.value][:, layer-width:layer].copy()
-                for c in [Face.GREEN, Face.WHITE, Face.BLUE, Face.YELLOW]
+                for c in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
             ]
-            for i, face in enumerate([Face.YELLOW, Face.GREEN, Face.WHITE, Face.BLUE]):
+            for i, face in enumerate([Face.BOTTOM, Face.FRONT, Face.TOP, Face.BACK]):
                 if i % 2 == 0:
                     front_top_back_down[i] = np.flip(front_top_back_down[i], axis=0)
-                if face == Face.BLUE:
+                if face == Face.BACK:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(front_top_back_down[i], axis=1)
                 else:
                     self.__cube[face.value][:, layer-width:layer] = front_top_back_down[i]
@@ -232,15 +216,15 @@ class Cube():
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0: 
-            self.__rotate(Face.WHITE, dist)
+            self.__rotate(Face.TOP, dist)
         if layer == 0:
-            self.__rotate(Face.YELLOW, dist)
+            self.__rotate(Face.BOTTOM, dist)
         for _ in range(dist):
             front_right_back_left = [
                 self.__cube[c.value][layer-width:layer, :].copy()
-                for c in [Face.GREEN, Face.ORANGE, Face.BLUE, Face.RED]
+                for c in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
             ]
-            for i, face in enumerate([Face.ORANGE, Face.BLUE, Face.RED, Face.GREEN]):
+            for i, face in enumerate([Face.LEFT, Face.BACK, Face.RIGHT, Face.FRONT]):
                 self.__cube[face.value][layer-width:layer, :] = front_right_back_left[i]
 
     def __turn_down(self, dist: int, layer: int = 1, width: int = 1) -> None:
@@ -259,15 +243,15 @@ class Cube():
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0:
-            self.__rotate(Face.YELLOW, -dist)
+            self.__rotate(Face.BOTTOM, -dist)
         if layer == 0:
-            self.__rotate(Face.WHITE, -dist)
+            self.__rotate(Face.TOP, -dist)
         for _ in range(dist):
             front_right_back_left = [
                 self.__cube[c.value][self.N-layer:self.N-layer+width, :].copy()
-                for c in [Face.GREEN, Face.ORANGE, Face.BLUE, Face.RED]
+                for c in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
             ]
-            for i, face in enumerate([Face.RED, Face.GREEN, Face.ORANGE, Face.BLUE]):
+            for i, face in enumerate([Face.RIGHT, Face.FRONT, Face.LEFT, Face.BACK]):
                 self.__cube[face.value][self.N-layer:self.N-layer+width, :] = front_right_back_left[i]
 
     def __turn_front(self, dist: int, layer: int = 1, width: int = 1):
@@ -287,25 +271,25 @@ class Cube():
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0:
-            self.__rotate(Face.GREEN, dist)
+            self.__rotate(Face.FRONT, dist)
         if layer == 0:
-            self.__rotate(Face.BLUE, -dist)
+            self.__rotate(Face.BACK, -dist)
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
                     np.flip(self.__cube[c.value][:, layer-width:layer].copy(), axis=1)
-                        if c == Face.RED else 
+                        if c == Face.RIGHT else 
                         self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
-                        if c == Face.ORANGE else 
+                        if c == Face.LEFT else 
                         self.__cube[c.value][self.N-layer:self.N-layer+width, :].copy(),
                     (1, 0)
                 )
-                for c in [Face.WHITE, Face.RED, Face.YELLOW, Face.ORANGE]
+                for c in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
             ]
-            for i, face in enumerate([Face.RED, Face.YELLOW, Face.ORANGE, Face.WHITE]):
-                if face == Face.RED:
+            for i, face in enumerate([Face.RIGHT, Face.BOTTOM, Face.LEFT, Face.TOP]):
+                if face == Face.RIGHT:
                     self.__cube[face.value][:, layer-width:layer] = np.flip(top_right_bottom_left[i], axis=1)
-                elif face == Face.ORANGE:
+                elif face == Face.LEFT:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
                 else:
                     self.__cube[face.value][self.N-layer:self.N-layer+width, :] = np.flip(top_right_bottom_left[i], axis=1)
@@ -327,25 +311,25 @@ class Cube():
         assert layer <= self.N, "Invalid turn: Turning more than entire cube" 
         dist %= 4
         if layer - width == 0:
-            self.__rotate(Face.BLUE, dist)
+            self.__rotate(Face.BACK, dist)
         if layer == 0:
-            self.__rotate(Face.GREEN, -dist)
+            self.__rotate(Face.FRONT, -dist)
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
                     self.__cube[c.value][:, layer-width:layer].copy()
-                        if c == Face.ORANGE else 
+                        if c == Face.LEFT else 
                         np.flip(self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy(), axis=1)
-                        if c == Face.RED else 
+                        if c == Face.RIGHT else 
                         np.flip(self.__cube[c.value][layer-width:layer, :].copy(), axis=1),
                     (1, 0)
                 )
-                for c in [Face.WHITE, Face.RED, Face.YELLOW, Face.ORANGE]
+                for c in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
             ]
-            for i, face in enumerate([Face.ORANGE, Face.WHITE, Face.RED, Face.YELLOW]):
-                if face == Face.ORANGE:
+            for i, face in enumerate([Face.LEFT, Face.TOP, Face.RIGHT, Face.BOTTOM]):
+                if face == Face.LEFT:
                     self.__cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
-                elif face == Face.RED:
+                elif face == Face.RIGHT:
                     self.__cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(top_right_bottom_left[i], axis=1)
                 else:
                     self.__cube[face.value][layer-width:layer, :] = top_right_bottom_left[i]
@@ -369,7 +353,7 @@ class Cube():
         """
         assert self.N > 2, "2x2 cannot be converted to 3x3"
 
-        def get_scalar(x: np.ndarray) -> Face:
+        def get_scalar(x: np.ndarray) -> Color:
             assert x.shape == (1,), "Cube could not be converted to a 3x3"
             return x[0]
 
@@ -388,7 +372,7 @@ class Cube():
 
 if __name__ == "__main__":
     if len(argv) > 1:
-        a = Cube.parse_commandline()
+        a = Cube.from_commandline()
         print(a)
     else:
         with open("./example_scrambles.json", "r") as f:

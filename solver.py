@@ -1,4 +1,5 @@
-from cube import Cube, Face
+from cube import Cube 
+from enums import Color, Face
 from error import ImpossibleScrambleException
 
 def orient_centers(cube: Cube) -> list[tuple[int, int, int]]:
@@ -12,10 +13,10 @@ def orient_centers(cube: Cube) -> list[tuple[int, int, int]]:
         direction = 'R'
         if i >= 4:
             direction = 'F'
-        if cube_matrix[Face.YELLOW.value][1, 1] == Face.WHITE:
+        if cube_matrix[Face.BOTTOM.value][1, 1] == Color.WHITE:
             break
         cube.turn(direction, 1, 2, 1, moves)
-    while cube_matrix[Face.GREEN.value][1, 1] != Face.GREEN:
+    while cube_matrix[Face.FRONT.value][1, 1] != Color.GREEN:
         cube.turn('U', 1, 2, 1, moves)
     return moves
 
@@ -25,6 +26,6 @@ def solve_cross(cube: Cube) -> list[tuple[int, int, int]]:
     """
 
 if __name__ == "__main__":
-    cube = Cube.parse_commandline()
+    cube = Cube.from_commandline()
     print(orient_centers(cube))
 
