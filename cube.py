@@ -1,12 +1,14 @@
 from __future__ import annotations
-from utils import get_move
-import random
-from enums import Face, Color
 import re
+import sys
 import json
-from sys import argv
+import random
+
 import numpy as np
 from pynterface import Background
+
+from enums import Color, Face
+from utils import get_move
 
 class Cube():
 
@@ -36,8 +38,24 @@ class Cube():
     
     @staticmethod
     def from_commandline() -> Cube:
-        cube = Cube(int(argv[1]))
-        cube.parse(argv[2])
+        side_length = int(sys.argv[1])
+        if side_length == 3:
+            cube = Cube3x3()
+        else:
+            cube = Cube(side_length)
+        cube.parse(sys.argv[2])
+        return cube
+
+    @staticmethod
+    def from_random_scramble() -> Cube:
+        with open("./example_scrambles.json", "r") as f:
+            scrambles = json.load(f)["scrambles"]
+        selected = scrambles[random.randint(0, len(scrambles)-1)]
+        if selected["size"] == 3:
+            cube = Cube3x3()
+        else:
+            cube = Cube(selected["size"])
+        cube.parse(selected["moves"], False)
         return cube
 
     def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
@@ -69,9 +87,9 @@ class Cube():
             output += f"{Background.RESET_BACKGROUND}\n "
             
         for i in range(self.N):
-            for color in [Face.LEFT, Face.FRONT, Face.RIGHT, Face.BACK]:
+            for face in [Face.LEFT, Face.FRONT, Face.RIGHT, Face.BACK]:
                 for j in range(self.N): 
-                    output += get_ansii(self.__cube[color.value][i][j]) + '  '
+                    output += get_ansii(self.__cube[face.value][i][j]) + '  '
             output += f"{Background.RESET_BACKGROUND}\n "
         
         bottom_face = self.__cube[Face.BOTTOM.value]
@@ -152,10 +170,10 @@ class Cube():
             self.__rotate(Face.LEFT, -dist)
         for _ in range(dist):
             front_top_back_down = [
-                np.flip(self.__cube[c.value][:, layer-width:layer].copy(), axis=1) 
-                if c == Face.BACK else 
-                self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
-                for c in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
+                np.flip(self.__cube[f.value][:, layer-width:layer].copy(), axis=1) 
+                if f == Face.BACK else 
+                self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy()
+                for f in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
             ]
             for i, face in enumerate([Face.TOP, Face.BACK, Face.BOTTOM, Face.FRONT]):
                 if i % 2:
@@ -187,10 +205,10 @@ class Cube():
             self.__rotate(Face.RIGHT, -dist)
         for _ in range(dist):
             front_top_back_down = [
-                np.flip(self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy(), axis=1) 
-                if c == Face.BACK else 
-                self.__cube[c.value][:, layer-width:layer].copy()
-                for c in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
+                np.flip(self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy(), axis=1) 
+                if f == Face.BACK else 
+                self.__cube[f.value][:, layer-width:layer].copy()
+                for f in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
             ]
             for i, face in enumerate([Face.BOTTOM, Face.FRONT, Face.TOP, Face.BACK]):
                 if i % 2 == 0:
@@ -221,8 +239,8 @@ class Cube():
             self.__rotate(Face.BOTTOM, dist)
         for _ in range(dist):
             front_right_back_left = [
-                self.__cube[c.value][layer-width:layer, :].copy()
-                for c in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
+                self.__cube[f.value][layer-width:layer, :].copy()
+                for f in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
             ]
             for i, face in enumerate([Face.LEFT, Face.BACK, Face.RIGHT, Face.FRONT]):
                 self.__cube[face.value][layer-width:layer, :] = front_right_back_left[i]
@@ -248,8 +266,8 @@ class Cube():
             self.__rotate(Face.TOP, -dist)
         for _ in range(dist):
             front_right_back_left = [
-                self.__cube[c.value][self.N-layer:self.N-layer+width, :].copy()
-                for c in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
+                self.__cube[f.value][self.N-layer:self.N-layer+width, :].copy()
+                for f in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
             ]
             for i, face in enumerate([Face.RIGHT, Face.FRONT, Face.LEFT, Face.BACK]):
                 self.__cube[face.value][self.N-layer:self.N-layer+width, :] = front_right_back_left[i]
@@ -277,14 +295,14 @@ class Cube():
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
-                    np.flip(self.__cube[c.value][:, layer-width:layer].copy(), axis=1)
-                        if c == Face.RIGHT else 
-                        self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy()
-                        if c == Face.LEFT else 
-                        self.__cube[c.value][self.N-layer:self.N-layer+width, :].copy(),
+                    np.flip(self.__cube[f.value][:, layer-width:layer].copy(), axis=1)
+                        if f == Face.RIGHT else 
+                        self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy()
+                        if f == Face.LEFT else 
+                        self.__cube[f.value][self.N-layer:self.N-layer+width, :].copy(),
                     (1, 0)
                 )
-                for c in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
+                for f in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
             ]
             for i, face in enumerate([Face.RIGHT, Face.BOTTOM, Face.LEFT, Face.TOP]):
                 if face == Face.RIGHT:
@@ -317,14 +335,14 @@ class Cube():
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
-                    self.__cube[c.value][:, layer-width:layer].copy()
-                        if c == Face.LEFT else 
-                        np.flip(self.__cube[c.value][:, self.N-layer:self.N-layer+width].copy(), axis=1)
-                        if c == Face.RIGHT else 
-                        np.flip(self.__cube[c.value][layer-width:layer, :].copy(), axis=1),
+                    self.__cube[f.value][:, layer-width:layer].copy()
+                        if f == Face.LEFT else 
+                        np.flip(self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy(), axis=1)
+                        if f == Face.RIGHT else 
+                        np.flip(self.__cube[f.value][layer-width:layer, :].copy(), axis=1),
                     (1, 0)
                 )
-                for c in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
+                for f in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
             ]
             for i, face in enumerate([Face.LEFT, Face.TOP, Face.RIGHT, Face.BOTTOM]):
                 if face == Face.LEFT:
@@ -370,14 +388,30 @@ class Cube():
             mod_cube[i][1, 1] = get_scalar(np.unique(current_side[1:-1, 1:-1]))
         return output
 
+class Cube3x3(Cube):
+    """
+    Class for 3x3 cubes with 3x3-exclusive methods.
+    Made so that non-3x3's don't call methods that
+    are made for 3x3's
+    """
+
+    def __init__(self) -> None:
+        super().__init__(side_length=3)
+
+    def get_center_at(self, a: Face) -> None:
+        pass
+
+    def get_edge_between(self, a: Face, b: Face) -> None:
+        pass
+
+    def get_corner_between(self, a: Face, b: Face, c: Face) -> None:
+        pass
+
 if __name__ == "__main__":
-    if len(argv) > 1:
+    if len(sys.argv) > 1:
         a = Cube.from_commandline()
         print(a)
     else:
-        with open("./example_scrambles.json", "r") as f:
-            scrambles = json.load(f)["scrambles"]
-        selected = scrambles[random.randint(0, len(scrambles)-1)]
-        a = Cube(int(selected["size"]))
-        a.parse(selected["moves"], False)
+        a = Cube.from_random_scramble()
         print(a)
+
