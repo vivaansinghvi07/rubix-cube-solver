@@ -22,7 +22,7 @@ def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
     else:
         raise InvalidTurnException("Cannot turn wider than the given layer")
 
-def clean_moves(moves: list[str]):
+def clean_moves(moves: list[str]) -> list[str]:
     """
     Replaces groups of moves (2, 3, 4) with the appropriate move.
     >>> clean_moves(['R', 'R', 'R'])

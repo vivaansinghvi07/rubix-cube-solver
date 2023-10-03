@@ -117,7 +117,7 @@ class Cube():
         """ Returns the mutable array of the cube """
         return self._cube
 
-    def parse(self, moves: str, no_spaces: bool = False):
+    def parse(self, moves: str, no_spaces: bool = False, output_movelist: list[str] | None = None):
         """
         Parses a list of moves given as a string with each move seperated by a space.
         The no_spaces argument can be passed to parse without considering spaces,
@@ -144,7 +144,7 @@ class Cube():
                     width = layer
             if letter.islower():
                 layer = width = 2
-            self.turn(letter.upper(), dist, layer, width)
+            self.turn(letter.upper(), dist, layer, width, output_movelist)
         
     def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: list[str] | None = None) -> None:
         """ Turns the cube depending on the given measure. """
@@ -410,13 +410,13 @@ class Cube3x3(Cube):
     def __init__(self) -> None:
         super().__init__(side_length=3)
 
-    def get_center_at(self, a: Face) -> dict[str, dict]:
+    def get_center_at(self, a: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
         return { 
             "c2f": (d:={self._cube[a.value][1, 1]: a}),
             "f2c": {v:k for k, v in d.items()}
         }
 
-    def get_edge_between(self, a: Face, b: Face) -> None:
+    def get_edge_between(self, a: Face, b: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
         """
         Gets the edge between two faces.
         """
@@ -446,10 +446,11 @@ class Cube3x3(Cube):
         }
 
 
-    def get_corner_between(self, a: Face, b: Face, c: Face) -> None:
+    def get_corner_between(self, a: Face, b: Face, c: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
         """
         Gets the corner between two faces.
         """
+
         [x_face, y_face, z_face] = [None] * 3
         for k, v in Cube.FACE_PAIRS.items():
             face = filter(lambda x: x in v, [a, b, c]).__next__()
