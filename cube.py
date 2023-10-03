@@ -3,7 +3,6 @@ import re
 import sys
 import json
 import random
-from types import coroutine
 
 import numpy as np
 from pynterface import Background
@@ -420,7 +419,6 @@ class Cube3x3(Cube):
     def get_edge_between(self, a: Face, b: Face) -> None:
         """
         Gets the edge between two faces.
-        Works because TODO: Finish
         """
         assert not any([
             all([i in pair for i in [a, b]])
