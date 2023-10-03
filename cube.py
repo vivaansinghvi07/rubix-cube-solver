@@ -3,6 +3,7 @@ import re
 import sys
 import json
 import random
+from types import coroutine
 
 import numpy as np
 from pynterface import Background
@@ -35,6 +36,18 @@ class Cube():
     The documentation of the turns and other things will assume a 3x3 
     cube, with the above numbering scheme.
     """
+
+    FACE_PAIRS = {
+        'y': (Face.TOP, Face.BOTTOM),
+        'z': (Face.FRONT, Face.BACK),
+        'x': (Face.LEFT, Face.RIGHT)
+    }
+
+    COLOR_PAIRS = {
+        'x': (Color.RED, Color.ORANGE),
+        'z': (Color.BLUE, Color.GREEN),
+        'y': (Color.WHITE, Color.YELLOW)
+    }
     
     @staticmethod
     def from_commandline() -> Cube:
@@ -60,12 +73,12 @@ class Cube():
 
     def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
         if scramble is None:
-            self.__cube = [
+            self._cube = [
                 np.array([[c] * side_length for _ in range(side_length)])
                 for c in list(Color)
             ]
         else: 
-            self.__cube = scramble
+            self._cube = scramble
         self.N = side_length
 
     def __str__(self):
@@ -79,7 +92,7 @@ class Cube():
                     return eval(f"Background.{other}_BRIGHT")
 
         output = "\n "
-        top_face = self.__cube[Face.TOP.value]
+        top_face = self._cube[Face.TOP.value]
         for i in range(self.N):
             output += '  ' * self.N
             for j in range(self.N):
@@ -89,10 +102,10 @@ class Cube():
         for i in range(self.N):
             for face in [Face.LEFT, Face.FRONT, Face.RIGHT, Face.BACK]:
                 for j in range(self.N): 
-                    output += get_ansii(self.__cube[face.value][i][j]) + '  '
+                    output += get_ansii(self._cube[face.value][i][j]) + '  '
             output += f"{Background.RESET_BACKGROUND}\n "
         
-        bottom_face = self.__cube[Face.BOTTOM.value]
+        bottom_face = self._cube[Face.BOTTOM.value]
         for i in range(self.N - 1, -1, -1):
             output += '  ' * self.N
             for j in range(self.N):
@@ -103,7 +116,7 @@ class Cube():
 
     def get_cube(self):
         """ Returns the mutable array of the cube """
-        return self.__cube
+        return self._cube
 
     def parse(self, moves: str, no_spaces: bool = False):
         """
@@ -170,18 +183,18 @@ class Cube():
             self.__rotate(Face.LEFT, -dist)
         for _ in range(dist):
             front_top_back_down = [
-                np.flip(self.__cube[f.value][:, layer-width:layer].copy(), axis=1) 
+                np.flip(self._cube[f.value][:, layer-width:layer].copy(), axis=1) 
                 if f == Face.BACK else 
-                self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy()
+                self._cube[f.value][:, self.N-layer:self.N-layer+width].copy()
                 for f in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
             ]
             for i, face in enumerate([Face.TOP, Face.BACK, Face.BOTTOM, Face.FRONT]):
                 if i % 2:
                     front_top_back_down[i] = np.flip(front_top_back_down[i], axis=0)
                 if face == Face.BACK:
-                    self.__cube[face.value][:, layer-width:layer] = np.flip(front_top_back_down[i], axis=1)
+                    self._cube[face.value][:, layer-width:layer] = np.flip(front_top_back_down[i], axis=1)
                 else:
-                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = front_top_back_down[i]
+                    self._cube[face.value][:, self.N-layer:self.N-layer+width] = front_top_back_down[i]
     
     def __turn_left(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
@@ -205,18 +218,18 @@ class Cube():
             self.__rotate(Face.RIGHT, -dist)
         for _ in range(dist):
             front_top_back_down = [
-                np.flip(self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy(), axis=1) 
+                np.flip(self._cube[f.value][:, self.N-layer:self.N-layer+width].copy(), axis=1) 
                 if f == Face.BACK else 
-                self.__cube[f.value][:, layer-width:layer].copy()
+                self._cube[f.value][:, layer-width:layer].copy()
                 for f in [Face.FRONT, Face.TOP, Face.BACK, Face.BOTTOM]
             ]
             for i, face in enumerate([Face.BOTTOM, Face.FRONT, Face.TOP, Face.BACK]):
                 if i % 2 == 0:
                     front_top_back_down[i] = np.flip(front_top_back_down[i], axis=0)
                 if face == Face.BACK:
-                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(front_top_back_down[i], axis=1)
+                    self._cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(front_top_back_down[i], axis=1)
                 else:
-                    self.__cube[face.value][:, layer-width:layer] = front_top_back_down[i]
+                    self._cube[face.value][:, layer-width:layer] = front_top_back_down[i]
 
     def __turn_up(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
@@ -239,11 +252,11 @@ class Cube():
             self.__rotate(Face.BOTTOM, dist)
         for _ in range(dist):
             front_right_back_left = [
-                self.__cube[f.value][layer-width:layer, :].copy()
+                self._cube[f.value][layer-width:layer, :].copy()
                 for f in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
             ]
             for i, face in enumerate([Face.LEFT, Face.BACK, Face.RIGHT, Face.FRONT]):
-                self.__cube[face.value][layer-width:layer, :] = front_right_back_left[i]
+                self._cube[face.value][layer-width:layer, :] = front_right_back_left[i]
 
     def __turn_down(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
@@ -266,11 +279,11 @@ class Cube():
             self.__rotate(Face.TOP, -dist)
         for _ in range(dist):
             front_right_back_left = [
-                self.__cube[f.value][self.N-layer:self.N-layer+width, :].copy()
+                self._cube[f.value][self.N-layer:self.N-layer+width, :].copy()
                 for f in [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
             ]
             for i, face in enumerate([Face.RIGHT, Face.FRONT, Face.LEFT, Face.BACK]):
-                self.__cube[face.value][self.N-layer:self.N-layer+width, :] = front_right_back_left[i]
+                self._cube[face.value][self.N-layer:self.N-layer+width, :] = front_right_back_left[i]
 
     def __turn_front(self, dist: int, layer: int = 1, width: int = 1):
         """ 
@@ -295,22 +308,22 @@ class Cube():
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
-                    np.flip(self.__cube[f.value][:, layer-width:layer].copy(), axis=1)
+                    np.flip(self._cube[f.value][:, layer-width:layer].copy(), axis=1)
                         if f == Face.RIGHT else 
-                        self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy()
+                        self._cube[f.value][:, self.N-layer:self.N-layer+width].copy()
                         if f == Face.LEFT else 
-                        self.__cube[f.value][self.N-layer:self.N-layer+width, :].copy(),
+                        self._cube[f.value][self.N-layer:self.N-layer+width, :].copy(),
                     (1, 0)
                 )
                 for f in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
             ]
             for i, face in enumerate([Face.RIGHT, Face.BOTTOM, Face.LEFT, Face.TOP]):
                 if face == Face.RIGHT:
-                    self.__cube[face.value][:, layer-width:layer] = np.flip(top_right_bottom_left[i], axis=1)
+                    self._cube[face.value][:, layer-width:layer] = np.flip(top_right_bottom_left[i], axis=1)
                 elif face == Face.LEFT:
-                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
+                    self._cube[face.value][:, self.N-layer:self.N-layer+width] = top_right_bottom_left[i]
                 else:
-                    self.__cube[face.value][self.N-layer:self.N-layer+width, :] = np.flip(top_right_bottom_left[i], axis=1)
+                    self._cube[face.value][self.N-layer:self.N-layer+width, :] = np.flip(top_right_bottom_left[i], axis=1)
 
     def __turn_back(self, dist: int, layer: int = 1, width: int = 1):
         """ 
@@ -335,22 +348,22 @@ class Cube():
         for _ in range(dist):
             top_right_bottom_left = [
                 np.transpose(
-                    self.__cube[f.value][:, layer-width:layer].copy()
+                    self._cube[f.value][:, layer-width:layer].copy()
                         if f == Face.LEFT else 
-                        np.flip(self.__cube[f.value][:, self.N-layer:self.N-layer+width].copy(), axis=1)
+                        np.flip(self._cube[f.value][:, self.N-layer:self.N-layer+width].copy(), axis=1)
                         if f == Face.RIGHT else 
-                        np.flip(self.__cube[f.value][layer-width:layer, :].copy(), axis=1),
+                        np.flip(self._cube[f.value][layer-width:layer, :].copy(), axis=1),
                     (1, 0)
                 )
                 for f in [Face.TOP, Face.RIGHT, Face.BOTTOM, Face.LEFT]
             ]
             for i, face in enumerate([Face.LEFT, Face.TOP, Face.RIGHT, Face.BOTTOM]):
                 if face == Face.LEFT:
-                    self.__cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
+                    self._cube[face.value][:, layer-width:layer] = top_right_bottom_left[i]
                 elif face == Face.RIGHT:
-                    self.__cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(top_right_bottom_left[i], axis=1)
+                    self._cube[face.value][:, self.N-layer:self.N-layer+width] = np.flip(top_right_bottom_left[i], axis=1)
                 else:
-                    self.__cube[face.value][layer-width:layer, :] = top_right_bottom_left[i]
+                    self._cube[face.value][layer-width:layer, :] = top_right_bottom_left[i]
 
     def __rotate(self, face: Face, turns: int = 1):
         """
@@ -358,8 +371,8 @@ class Cube():
             face: the color to rotate
             turns: the number of turns to execute
         """
-        self.__cube[face.value] = np.rot90(
-                self.__cube[face.value], -(turns % 4)
+        self._cube[face.value] = np.rot90(
+                self._cube[face.value], -(turns % 4)
             )
 
     def get_3x3(self) -> Cube:
@@ -378,7 +391,7 @@ class Cube():
         output = Cube()
         mod_cube = output.get_cube()
         for i in range(6):
-            current_side = self.__cube[i]
+            current_side = self._cube[i]
             for corner_x, corner_y in [(0, -1), (0, 0), (-1, 0), (-1, -1)]:
                 mod_cube[i][corner_y, corner_x] = current_side[corner_y, corner_x]
             for edge_y, edge_x in [(0, 1), (1, 0), (1, -1), (-1, 1)]:
@@ -398,14 +411,78 @@ class Cube3x3(Cube):
     def __init__(self) -> None:
         super().__init__(side_length=3)
 
-    def get_center_at(self, a: Face) -> None:
-        pass
+    def get_center_at(self, a: Face) -> dict[str, dict]:
+        return { 
+            "c2f": (d:={self._cube[a.value][1, 1]: a}),
+            "f2c": {v:k for k, v in d.items()}
+        }
 
     def get_edge_between(self, a: Face, b: Face) -> None:
-        pass
+        """
+        Gets the edge between two faces.
+        Works because TODO: Finish
+        """
+        assert not any([
+            all([i in pair for i in [a, b]])
+            for pair in Cube.FACE_PAIRS.values()
+        ]), "Illegal edge combination"
+        
+        if all([i not in [Face.TOP, Face.BOTTOM] for i in [a, b]]):
+            colors_to_faces = {
+                self._cube[a.value][1, 0 if a < b else 2]: a,
+                self._cube[b.value][1, 2 if a < b else 0]: b
+            }
+        else:
+            top_face = a if a in [Face.TOP, Face.BOTTOM] else b
+            side_face = b if top_face == a else a
+            top_face_indeces = [(2, 1), (1, 0), (0, 1), (1, 2)][side_face.value]
+            side_face_indeces = (0, 1) if top_face == Face.TOP else (2, 1)
+            colors_to_faces = {
+                self._cube[top_face.value][*top_face_indeces]: top_face,
+                self._cube[side_face.value][*side_face_indeces]: side_face
+            }
+            
+        return { 
+            "c2f": colors_to_faces,
+            "f2c": {v:k for k, v in colors_to_faces.items()}
+        }
+
 
     def get_corner_between(self, a: Face, b: Face, c: Face) -> None:
-        pass
+        """
+        Gets the corner between two faces.
+        """
+        [x_face, y_face, z_face] = [None] * 3
+        for k, v in Cube.FACE_PAIRS.items():
+            face = filter(lambda x: x in v, [a, b, c]).__next__()
+            if k == 'x':
+                x_face = face
+            elif k == 'y':
+                y_face = face
+            else:
+                z_face = face
+        assert all([x_face, y_face, z_face]), "Illegal corner combination"
+        possible_y_corners = [
+            {(2, 0), (2, 2)},
+            {(0, 0), (2, 0)},
+            {(0, 0), (0, 2)},
+            {(0, 2), (2, 2)}
+        ]
+        y_face_indeces = (possible_y_corners[z_face.value] & possible_y_corners[x_face.value]).pop()
+        
+        xz_face_y_value = 0 if y_face == Face.TOP else 2
+        x_face_indeces = (xz_face_y_value, 0 if x_face < z_face else 2)
+        z_face_indeces = (xz_face_y_value, 2 if x_face < z_face else 0)
+        colors_to_faces = {
+            self._cube[y_face.value][*y_face_indeces]: y_face,
+            self._cube[x_face.value][*x_face_indeces]: x_face,
+            self._cube[z_face.value][*z_face_indeces]: z_face
+        }
+
+        return {
+            "c2f": colors_to_faces,
+            "f2c": {v: k for k, v in colors_to_faces.items()}
+        }
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
