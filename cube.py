@@ -427,8 +427,8 @@ class Cube3x3(Cube):
         
         if all([i not in [Face.TOP, Face.BOTTOM] for i in [a, b]]):
             colors_to_faces = {
-                self._cube[a.value][1, 0 if a < b else 2]: a,
-                self._cube[b.value][1, 2 if a < b else 0]: b
+                self._cube[a.value][1, 0 if (b.value - a.value) % 4 == 1 else 2]: a,
+                self._cube[b.value][1, 2 if (b.value - a.value) % 4 == 1 else 0]: b
             }
         else:
             top_face = a if a in [Face.TOP, Face.BOTTOM] else b
@@ -470,8 +470,8 @@ class Cube3x3(Cube):
         y_face_indeces = (possible_y_corners[z_face.value] & possible_y_corners[x_face.value]).pop()
         
         xz_face_y_value = 0 if y_face == Face.TOP else 2
-        x_face_indeces = (xz_face_y_value, 0 if x_face < z_face else 2)
-        z_face_indeces = (xz_face_y_value, 2 if x_face < z_face else 0)
+        x_face_indeces = (xz_face_y_value, 0 if (z_face.value - x_face.value) % 4 == 1 else 2)
+        z_face_indeces = (xz_face_y_value, 2 if (z_face.value - x_face.value) % 4 == 1 else 0)
         colors_to_faces = {
             self._cube[y_face.value][*y_face_indeces]: y_face,
             self._cube[x_face.value][*x_face_indeces]: x_face,
