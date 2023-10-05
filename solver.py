@@ -136,6 +136,7 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
                 case Face.RIGHT: sexy_moves = 2
                 case Face.FRONT: sexy_moves = 4
                 case _: raise ImpossibleScrambleException("Cube could not be solved.")
+            cube.parse(sexy_move_times(sexy_moves), output_movelist=moves)
             continue
         if any((l:=[
             is_corner_matched(cube, [Face.BOTTOM, a, b], [right_color, front_color, Color.WHITE])
