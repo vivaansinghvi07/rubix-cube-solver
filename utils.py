@@ -1,4 +1,5 @@
 import re
+from enums import Face
 from error import InvalidTurnException
 
 def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
@@ -68,6 +69,28 @@ def clean_moves(moves: list[str]) -> list[str]:
     if prev_root is None:
         return []
     return [*new_moves, get_final_move(prev_root, prev_move_dist)]
+
+def sexy_move_times(n: int, left_hand: bool = False) -> str:
+    """
+    Returns a string of moves repeating the "sexy move" n times.
+    If left, returns left-handed movement.
+    """
+    n %= 6
+    use_backwards = n > 3
+
+    move_left = "L' U' L U "
+    move_left_backwards = "U' L' U L "
+    move_right = "R U R' U' "
+    move_right_backwards = "U R U' R' "
+ 
+    if not use_backwards:
+        if left_hand: moves = move_left
+        else: moves = move_right
+    else:
+        if left_hand: moves = move_left_backwards
+        else: moves = move_right_backwards
+    
+    return (moves * min(n, 6 - n)).strip()
 
 if __name__ == "__main__":
     print(get_move('L', -1, 5, 3))
