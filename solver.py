@@ -10,7 +10,10 @@ SIDE_FACE_PAIRS = [*zip(SIDE_FACES[:4], SIDE_FACES[1:4] + SIDE_FACES[0:1])]
 
 def orient_centers(cube: Cube3x3) -> list[str]:
     """ 
-    Orients the centers with white on the bottom on green on the front 
+    Orients the centers with white on the bottom on green on the front.
+    Strategy:
+        - Rotate the middle layer until white is on the bottom.
+        - If unsuccessful, rotate the middle layer behind the front.
     """
     assert cube.N == 3, "Can only orient centers on a 3x3"
     moves = []
@@ -27,8 +30,9 @@ def orient_centers(cube: Cube3x3) -> list[str]:
 def solve_white_cross(cube: Cube3x3) -> list[str]:
     """
     Solves the cross for a cube, assuming centers are oriented.
-    First, get all the white edges oriented correctly on the top face.
-    Then, insert each edge into the correct place using 180 turns.
+    Strategy:
+        - First, get all the white edges oriented correctly on the top face.
+        - Then, insert each edge into the correct place using 180 turns.
     """
 
     def all_edges_white(cube: Cube3x3, face: Face) -> bool:
@@ -39,18 +43,21 @@ def solve_white_cross(cube: Cube3x3) -> list[str]:
         ])
 
     moves = []
-    safety_counter = 0
     while not all_edges_white(cube, Face.TOP):
-        safety_counter += 1
-        if safety_counter > 100:
-            raise ImpossibleScrambleException("Cube could not be solved.")
 
+        # edge we are dealing with: top-front
         top_front_edge = cube.get_edge_between(Face.FRONT, Face.TOP)
+        
+        # rotate the top until dealing with an improper edge
         while top_front_edge["f2c"][Face.TOP] == Color.WHITE:
             cube.turn("U", 1, 1, 1, moves)
             top_front_edge = cube.get_edge_between(Face.FRONT, Face.TOP)
+
+        # check if edge is there but oriented wrong, if so, flip it   
         if top_front_edge["f2c"][Face.FRONT] == Color.WHITE:
             cube.parse("F U' R", output_movelist=moves)
+
+        # check if any white edge is in the second layer, if so, move and add it
         elif any((l:=[Color.WHITE in cube.get_edge_between(i, j)["c2f"] for i, j in SIDE_FACE_PAIRS])):
             loc = l.index(True)
             cube.turn("U", -loc, 2, 1, moves)
@@ -58,6 +65,8 @@ def solve_white_cross(cube: Cube3x3) -> list[str]:
                 cube.parse("2U' F'", output_movelist=moves)
             else:
                 cube.turn('F', 1, 1, 1, moves)
+
+        # check if any white edge is on the bottom, add depending on orientation
         elif any((l:=[Color.WHITE in cube.get_edge_between(Face.BOTTOM, i)["c2f"] for i in SIDE_FACES])):
             loc = l.index(True)
             cube.turn("D", loc, 1, 1, moves)
@@ -67,13 +76,14 @@ def solve_white_cross(cube: Cube3x3) -> list[str]:
                 cube.parse("F' U' R", output_movelist=moves)
 
     while not all_edges_white(cube, Face.BOTTOM):
-        safety_counter += 1 
-        if safety_counter > 200:
-            raise ImpossibleScrambleException("Cube could not be solved")
+
+        # get edge we are working with and turn the top until we get to a white edge
         top_front_edge = cube.get_edge_between(Face.FRONT, Face.TOP)
         while top_front_edge["f2c"][Face.TOP] != Color.WHITE:
             cube.turn("U", 1, 1, 1, moves)
             top_front_edge = cube.get_edge_between(Face.FRONT, Face.TOP)
+
+        # turn the bottom two layers until the center is the same color as the edge, then insert edge
         front_edge_color = top_front_edge["f2c"][Face.FRONT]
         while front_edge_color not in cube.get_center_at(Face.FRONT)["c2f"]:
             cube.turn("D", 1, 2, 2, moves)
@@ -85,6 +95,12 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
     """
     Solves the corners for the first layer of the cube.
     Assumes the cross is already properly built.
+    Strategy:
+        - Work with the corner on the front, bottom, right of the cube.
+        - If solved, move on.
+        - If in right place and oriented wrong, orient it.
+        - If in bottom layer elsewhere, extract it from the bottom to top.
+        - If in top, insert into correct spot.
     """
     def all_white_corners_solved(cube: Cube3x3) -> bool:
         """
@@ -127,10 +143,15 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
 
     moves = []
     while not all_white_corners_solved(cube):
+
+        # rotate bottom two layers until working with unsolved corner
         while all(is_corner_solved(cube, Face.FRONT, Face.RIGHT).values()):
             cube.turn("D", 1, 2, 2, moves)
+
         right_color = cube.get_edge_between(Face.RIGHT, Face.BOTTOM)["f2c"][Face.RIGHT]
         front_color = cube.get_edge_between(Face.FRONT, Face.BOTTOM)["f2c"][Face.FRONT] 
+        
+        # see if the corner is in the right place and oriented wrong
         if is_corner_solved(cube, Face.FRONT, Face.RIGHT)["permuted"]:
             match cube.get_corner_between(Face.FRONT, Face.RIGHT, Face.BOTTOM)["c2f"][Color.WHITE]:
                 case Face.RIGHT: sexy_moves = 2
@@ -138,6 +159,8 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
                 case _: raise ImpossibleScrambleException("Cube could not be solved.")
             cube.parse(sexy_move_times(sexy_moves), output_movelist=moves)
             continue
+
+        # see if the target corner is elsewhere in the bottom layer of the cube, if so, remove to top layer
         if any((l:=[
             is_corner_matched(cube, [Face.BOTTOM, a, b], [right_color, front_color, Color.WHITE])
             for a, b in SIDE_FACE_PAIRS
@@ -146,6 +169,8 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
             cube.turn('D', loc, 1, 1, moves)
             cube.parse(sexy_move_times(1), output_movelist=moves)
             cube.turn('D', -loc, 1, 1, moves)
+
+        # see if the target corner is in the top layer, if so, insert it
         if any((l:=[
             is_corner_matched(cube, [Face.TOP, a, b], [right_color, front_color, Color.WHITE])
             for a, b in SIDE_FACE_PAIRS
@@ -160,6 +185,40 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
             cube.parse(sexy_move_times(sexy_moves), output_movelist=moves)
     
     return moves
+
+def solve_second_layer_edges(cube: Cube3x3) -> list[str]:
+    """
+    Completes F2L by solving the edges of the cube.
+    Assumes the first layer is already solved.
+    """
+    def is_f2l_solved(cube: Cube3x3) -> bool:
+        """
+        Determines if the first two layers are solved.
+        """
+        return all([
+            all([
+                color in cube.get_edge_between(left, right)["c2f"] for color in [
+                    cube.get_center_at(right)["f2c"][right], 
+                    cube.get_center_at(left)["f2c"][left]
+                ]
+            ])
+            for right, left in SIDE_FACE_PAIRS
+        ])
+
+    def is_edge_solved(cube: Cube3x3, a: Face, b: Face):
+        """
+        Determines if a single f2l edge is solved.
+        """
+        return all([
+            color in cube.get_edge_between(a, b) for color in [
+                cube.get_center_at(a)["f2c"][a],
+                cube.get_center_at(b)["f2c"][b]
+            ]
+        ])
+
+    while not is_f2l_solved(cube):
+        while is_edge_solved(cube, Face.FRONT, Face.RIGHT):
+            pass
 
 if __name__ == "__main__":
     cube = Cube.from_commandline()
