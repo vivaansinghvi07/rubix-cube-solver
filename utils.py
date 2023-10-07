@@ -90,7 +90,7 @@ def sexy_move_times(n: int, left_hand: bool = False) -> str:
         if left_hand: moves = move_left_backwards
         else: moves = move_right_backwards
     
-    return (moves * min(n, 6 - n)).strip()
+    return f" {(moves * min(n, 6 - n)).strip()} "
 
 if __name__ == "__main__":
     print(get_move('L', -1, 5, 3))
