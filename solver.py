@@ -263,6 +263,48 @@ def solve_second_layer_edges(cube: Cube3x3) -> list[str]:
 
     return moves
 
+def solve_oll_edges(cube: Cube3x3) -> list[str]:
+    """
+    Orients the last layer edges, throws an exception if a parity is detected.
+    """
+
+    # calculate number of edges properly aligned
+    moves = []
+    match sum([
+        cube.get_edge_between(face, Face.TOP)["f2c"][Face.TOP] == Color.YELLOW
+        for face in SIDE_FACES
+    ]):
+        case 1 | 3:
+           raise ImpossibleScrambleException("Parity detected. Fix one of the edges to continue.")
+        case 4:
+            return moves
+        case 2:            
+            # detect for line case or L case, orient them correctly for solving 
+            s = sum([
+                face.value for face in SIDE_FACES
+                if cube.get_edge_between(face, Face.TOP)["f2c"][Face.TOP] == Color.YELLOW
+            ])
+            layers = 1 + (s % 2 != 0)
+            match s:
+                case 1: 
+                    cube.turn("U", -1, 1, 1, moves)
+                case 2 | 5:
+                    cube.turn("U", 1, 1, 1, moves)
+                case 3:
+                    if not cube.get_edge_between(Face.TOP, Face.FRONT)["f2c"][Face.TOP] == Color.YELLOW:
+                        cube.turn("U", 2, 1, 1, moves)
+            cube.turn('F', 1, layers, layers, moves)
+            cube.parse(sexy_move_times(1), output_movelist=moves)
+            cube.turn('F', -1, layers, layers, moves)
+        case 0:
+            cube.turn('F', 1, 1, 1, moves)
+            cube.parse(sexy_move_times(1), output_movelist=moves)
+            cube.turn('F', 1, 2, 1, moves)
+            cube.parse(sexy_move_times(1), output_movelist=moves)
+            cube.turn('F', -1, 2, 2, moves)
+
+    return moves
+
 if __name__ == "__main__":
     cube = Cube.from_commandline()
     assert isinstance(cube, Cube3x3)
@@ -271,4 +313,5 @@ if __name__ == "__main__":
     print(solve_white_cross(cube))
     print(solve_first_layer_corners(cube))
     print(solve_second_layer_edges(cube))
+    print(solve_oll_edges(cube))
     print(cube)
