@@ -196,29 +196,72 @@ def solve_second_layer_edges(cube: Cube3x3) -> list[str]:
         Determines if the first two layers are solved.
         """
         return all([
-            all([
-                color in cube.get_edge_between(left, right)["c2f"] for color in [
-                    cube.get_center_at(right)["f2c"][right], 
-                    cube.get_center_at(left)["f2c"][left]
-                ]
-            ])
-            for right, left in SIDE_FACE_PAIRS
+            is_edge_solved(cube, *pair)
+            for pair in SIDE_FACE_PAIRS
         ])
 
-    def is_edge_solved(cube: Cube3x3, a: Face, b: Face):
+    def is_edge_solved(cube: Cube3x3, a: Face, b: Face) -> bool:
         """
         Determines if a single f2l edge is solved.
         """
+        edge_f2c = cube.get_edge_between(a, b)["f2c"]
+        return (
+            edge_f2c[a] == cube.get_center_at(a)["f2c"][a] and 
+            edge_f2c[b] == cube.get_center_at(b)["f2c"][b]
+        ) 
+
+    def is_edge_matched(cube: Cube3x3, faces: list[Face]) -> bool:
+        """
+        Determines if a given edge is composed of colors 
+        that are in the front and right centers.
+        """
+        edge = cube.get_edge_between(*faces)
         return all([
-            color in cube.get_edge_between(a, b) for color in [
-                cube.get_center_at(a)["f2c"][a],
-                cube.get_center_at(b)["f2c"][b]
+            color in edge["c2f"] for color in [
+                cube.get_center_at(Face.RIGHT)["f2c"][Face.RIGHT],
+                cube.get_center_at(Face.FRONT)["f2c"][Face.FRONT]
             ]
         ])
 
+    moves = []
+    EDGE_INSERT = sexy_move_times(1) + " y " + sexy_move_times(1, left_hand=True) + "y' "
     while not is_f2l_solved(cube):
+        
+        # rotate bottom two until unsolved edge is front-right
         while is_edge_solved(cube, Face.FRONT, Face.RIGHT):
-            pass
+            cube.turn('D', 1, 2, 2, moves)
+
+        # detect if the edge is in the right place but oriented wrong
+        if is_edge_matched(cube, [Face.FRONT, Face.RIGHT]):
+            cube.parse(EDGE_INSERT + "U2 " + EDGE_INSERT, output_movelist=moves)
+
+        # detect if the edge is elsewhere in the second layer, if so, spit it out 
+        if any((l:=[
+            is_edge_matched(cube, [*pair])
+            for pair in SIDE_FACE_PAIRS
+        ])):
+            loc = l.index(True) + 1 
+            cube.turn("D", loc, 2, 2, moves)
+            cube.parse(EDGE_INSERT, output_movelist=moves)
+            cube.turn("D", -loc, 2, 2, moves)
+
+        # detect if the edge is in the top layer 
+        if any((l:=[
+            is_edge_matched(cube, [face, Face.TOP])
+            for face in SIDE_FACES
+        ])):
+            loc = l.index(True) 
+            cube.turn("U", -loc, 1, 1, moves)
+            if (
+                cube.get_edge_between(Face.TOP, Face.FRONT)["f2c"][Face.TOP] 
+                == cube.get_center_at(Face.FRONT)["f2c"][Face.FRONT]
+            ):
+                left_edge_insert = "y " + sexy_move_times(1, left_hand=True) + "y' " + sexy_move_times(1)
+                cube.parse("U2 " + left_edge_insert, output_movelist=moves)
+            else:
+                cube.parse("U " + EDGE_INSERT, output_movelist=moves)
+
+    return moves
 
 if __name__ == "__main__":
     cube = Cube.from_commandline()
@@ -227,4 +270,5 @@ if __name__ == "__main__":
     print(orient_centers(cube))
     print(solve_white_cross(cube))
     print(solve_first_layer_corners(cube))
+    print(solve_second_layer_edges(cube))
     print(cube)
