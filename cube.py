@@ -130,7 +130,7 @@ class Cube():
             move_list = moves.split()
         for m in filter(lambda x: bool(x.strip()), move_list):
             dist = width = layer = 1
-            letter = re.search(r'[rfdublRFDUBL]', m).group()
+            letter = re.search(r'[rfdublRFDUBLxyz]', m).group()
             if len(m) != 1:
                 if m[-1] == '2':
                     dist = 2
@@ -144,6 +144,12 @@ class Cube():
                     width = layer
             if letter.islower():
                 layer = width = 2
+            if letter in 'xyz':
+                letter = {
+                    'x': 'R', 'y' : 'U', 'z': 'F' 
+                }[letter]
+                dist = 1 if len(m) == 1 else -1
+                width = layer = self.N
             self.turn(letter.upper(), dist, layer, width, output_movelist)
         
     def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: list[str] | None = None) -> None:
@@ -247,7 +253,7 @@ class Cube():
         dist %= 4
         if layer - width == 0: 
             self.__rotate(Face.TOP, dist)
-        if layer == 0:
+        if layer == self.N:
             self.__rotate(Face.BOTTOM, dist)
         for _ in range(dist):
             front_right_back_left = [
@@ -274,7 +280,7 @@ class Cube():
         dist %= 4
         if layer - width == 0:
             self.__rotate(Face.BOTTOM, -dist)
-        if layer == 0:
+        if layer == self.N:
             self.__rotate(Face.TOP, -dist)
         for _ in range(dist):
             front_right_back_left = [
@@ -302,7 +308,7 @@ class Cube():
         dist %= 4
         if layer - width == 0:
             self.__rotate(Face.FRONT, dist)
-        if layer == 0:
+        if layer == self.N:
             self.__rotate(Face.BACK, -dist)
         for _ in range(dist):
             top_right_bottom_left = [
@@ -342,7 +348,7 @@ class Cube():
         dist %= 4
         if layer - width == 0:
             self.__rotate(Face.BACK, dist)
-        if layer == 0:
+        if layer == self.N:
             self.__rotate(Face.FRONT, -dist)
         for _ in range(dist):
             top_right_bottom_left = [
