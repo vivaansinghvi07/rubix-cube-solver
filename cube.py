@@ -1,8 +1,8 @@
 from __future__ import annotations
 import re
-import sys
 import json
 import random
+import argparse
 
 import numpy as np
 from pynterface import Background
@@ -47,27 +47,27 @@ class Cube():
         'z': (Color.BLUE, Color.GREEN),
         'y': (Color.WHITE, Color.YELLOW)
     }
-    
-    @staticmethod
-    def from_commandline() -> Cube:
-        side_length = int(sys.argv[1])
-        if side_length == 3:
-            cube = Cube3x3()
-        else:
-            cube = Cube(side_length)
-        cube.parse(sys.argv[2])
-        return cube
 
     @staticmethod
-    def from_random_scramble() -> Cube:
-        with open("./example_scrambles.json", "r") as f:
-            scrambles = json.load(f)["scrambles"]
-        selected = scrambles[random.randint(0, len(scrambles)-1)]
-        if selected["size"] == 3:
+    def parse_args() -> Cube:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-n", "--side-length", help="the side length of the cube", type=int)
+        parser.add_argument("-r", "--random-scramble", help="initialize the cube with a random scramble", action="store_true")
+        parser.add_argument("-c", "--custom-scramble", help="initialize the cube with your own scramble", type=str)
+        args = parser.parse_args()
+        
+        if not args.side_length: 
+            args.side_length = random.randint(2, 7)
+        if args.side_length == 3:
             cube = Cube3x3()
         else:
-            cube = Cube(selected["size"])
-        cube.parse(selected["moves"], False)
+            cube = Cube(side_length=args.side_length)
+
+        if args.custom_scramble:
+            cube.parse(args.custom_scramble)
+        elif args.random_scramble:
+            cube.scramble()
+
         return cube
 
     def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
@@ -112,6 +112,14 @@ class Cube():
             output += f"{Background.RESET_BACKGROUND}\n "
         
         return output
+
+    def scramble(self):
+        if 2 <= self.N <= 7:
+            with open("./scrambles.json", "r") as f:
+                scrambles = json.load(f)
+            self.parse(random.choice(scrambles[str(self.N)]))
+        elif self.N > 7:
+            raise NotImplementedError("I didn't make this yet sorry")
 
     def get_cube(self):
         """ Returns the mutable array of the cube """
@@ -493,10 +501,5 @@ class Cube3x3(Cube):
         }
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        a = Cube.from_commandline()
-        print(a)
-    else:
-        a = Cube.from_random_scramble()
-        print(a)
-
+    cube = Cube.parse_args()
+    print(cube)
