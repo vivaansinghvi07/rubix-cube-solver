@@ -1,4 +1,5 @@
 import time
+from typing import Callable
 import numpy as np
 from cube import Cube, Cube3x3
 from enums import Color, Face
@@ -25,7 +26,7 @@ def orient_centers(cube: Cube3x3) -> list[str]:
         if cube_matrix[Face.BOTTOM.value][1, 1] == Color.WHITE:
             break
         cube.turn(direction, 1, 2, 1, moves)
-    return clean_moves(moves)
+    return moves
 
 def solve_white_cross(cube: Cube3x3) -> list[str]:
     """
@@ -89,7 +90,7 @@ def solve_white_cross(cube: Cube3x3) -> list[str]:
             cube.turn("D", 1, 2, 2, moves)
         cube.turn("F", 2, 1, 1, moves)
 
-    return clean_moves(moves)
+    return moves
 
 def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
     """
@@ -184,7 +185,7 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
                 case _: raise ImpossibleScrambleException("Cube could not be solved.")
             cube.parse(sexy_move_times(sexy_moves), output_movelist=moves)
     
-    return clean_moves(moves)
+    return moves
 
 def solve_second_layer_edges(cube: Cube3x3) -> list[str]:
     """
@@ -261,7 +262,7 @@ def solve_second_layer_edges(cube: Cube3x3) -> list[str]:
             else:
                 cube.parse("U " + EDGE_INSERT, output_movelist=moves)
 
-    return clean_moves(moves)
+    return moves
 
 def solve_oll_edges(cube: Cube3x3) -> list[str]:
     """
@@ -303,7 +304,7 @@ def solve_oll_edges(cube: Cube3x3) -> list[str]:
             cube.parse(sexy_move_times(1), output_movelist=moves)
             cube.turn('F', -1, 2, 2, moves)
 
-    return clean_moves(moves)
+    return moves
 
 def solve_oll_corners(cube: Cube3x3) -> list[str]:
     """
@@ -327,7 +328,7 @@ def solve_oll_corners(cube: Cube3x3) -> list[str]:
         cube.parse(sexy_move_times(sexy_moves), output_movelist=moves)
         cube.turn("D", 1, 1, 1, moves)    
     cube.parse('x2', output_movelist=moves)
-    return clean_moves(moves)
+    return moves
 
 def solve_pll_corners(cube: Cube3x3) -> list[str]:
     """
@@ -351,7 +352,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
         return []
     elif edge_diff_1 == edge_diff_2: 
         cube.parse(T_PERM + "y2" + T_PERM, output_movelist=moves)
-        return clean_moves(moves)  
+        return moves  
     
     # different rotations of one-corner swap
     if edge_diff_1 % 4 == 2:
@@ -361,7 +362,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
     elif arr_diff(cube_matrix[Face.LEFT.value][0, (0, 2)]) == 2:
         cube.turn("U", 2, 1, 1, moves)
     cube.parse(T_PERM, output_movelist=moves)
-    return clean_moves(moves)
+    return moves
 
 def solve_pll_edges(cube: Cube3x3) -> list[str]:
     """
@@ -397,18 +398,35 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
     while np.unique(cube_matrix[Face.FRONT.value]).shape != (1,):
         cube.turn("U", 1, 1, 1, moves)
 
-    return clean_moves(moves)
+    return moves
+
+class SolvePipeline:
+    def __init__(self, *funcs: Callable[[Cube], list[str]]):
+        self.__funcs = funcs
+    def __call__(self, cube: Cube):
+        moves = []
+        for func in self.__funcs:
+            moves += func(cube)
+        return clean_moves(moves)
 
 if __name__ == "__main__":
     cube = Cube.from_commandline()
     assert isinstance(cube, Cube3x3)
+    pipe = SolvePipeline(
+        orient_centers,
+        solve_white_cross,
+        solve_first_layer_corners,
+        solve_second_layer_edges,
+        solve_oll_edges,
+        solve_oll_corners,
+        solve_pll_corners,
+        solve_pll_edges
+
+    )
     print(cube)
-    print(orient_centers(cube))
-    print(solve_white_cross(cube))
-    print(solve_first_layer_corners(cube))
-    print(solve_second_layer_edges(cube))
-    print(solve_oll_edges(cube))
-    print(solve_oll_corners(cube))
-    print(solve_pll_corners(cube))
-    print(solve_pll_edges(cube))
+    moves = pipe(cube)
     print(cube)
+    print(moves)
+    t = Cube.from_commandline()
+    t.parse(" ".join(moves))
+    print(t)
