@@ -334,7 +334,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
     """
     Permutes the last layer corners.
     """
-    T_PERM = "R U R' U' R' F R2 U' R' U' R U R' F'"
+    T_PERM = " R U R' U' R' F R2 U' R' U' R U R' F' "
 
     def arr_diff(arr: np.ndarray[Face]) -> int:
         """
@@ -350,7 +350,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
     # check for diagonal corner swap or none
     if edge_diff_1 == edge_diff_2 == 0:
         return []
-    elif edge_diff_1 == edge_diff_2: 
+    elif edge_diff_1 == edge_diff_2 == 2: 
         cube.parse(T_PERM + "y2" + T_PERM, output_movelist=moves)
         return moves  
     
@@ -373,7 +373,7 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
     cube_matrix = cube.get_cube()
     edge_swap = (sexy_move_times(1) + sexy_move_times(1, left_hand=True)
               + sexy_move_times(-1) + sexy_move_times(-1, left_hand=True))
-
+    
     for _ in range(2):
         match sum((l:=[
             cube_matrix[face.value][0, 1] != cube_matrix[face.value][0, 0]
@@ -401,16 +401,20 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
     return moves
 
 class SolvePipeline:
-    def __init__(self, *funcs: Callable[[Cube], list[str]]):
+    def __init__(self, *funcs: Callable[[Cube], list[str]], debug: bool = False):
         self.__funcs = funcs
+        self.__debug = debug
     def __call__(self, cube: Cube):
         moves = []
         for func in self.__funcs:
             moves += func(cube)
+            if self.__debug:
+                print(f"{func.__name__}: ")
+                print(cube)
         return clean_moves(moves)
 
 if __name__ == "__main__":
-    cube = Cube.from_commandline()
+    cube = Cube.parse_args()
     assert isinstance(cube, Cube3x3)
     pipe = SolvePipeline(
         orient_centers,
@@ -420,13 +424,9 @@ if __name__ == "__main__":
         solve_oll_edges,
         solve_oll_corners,
         solve_pll_corners,
-        solve_pll_edges
-
+        solve_pll_edges,
+        debug=True
     )
     print(cube)
     moves = pipe(cube)
-    print(cube)
     print(moves)
-    t = Cube.from_commandline()
-    t.parse(" ".join(moves))
-    print(t)
