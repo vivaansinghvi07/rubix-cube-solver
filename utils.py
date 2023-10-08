@@ -3,8 +3,13 @@ from enums import Face
 from error import InvalidTurnException
 
 def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
+
+    dist %= 4
+    if dist == 0:
+        return []
+
     layer_str = '' if layer == 1 else str(layer)
-    dist_str = '2' if dist == 2 else "'" if dist == -1 else ''
+    dist_str = '2' if dist == 2 else "'" if dist == 3 else ''
     output_str = f"{{}}{side}{{}}{{}}"
     
     if width == 1:
