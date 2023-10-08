@@ -148,7 +148,10 @@ class Cube():
                 letter = {
                     'x': 'R', 'y' : 'U', 'z': 'F' 
                 }[letter]
-                dist = 1 if len(m) == 1 else -1
+                match m[-1]:
+                    case "'": dist = -1
+                    case "2": dist = 2
+                    case _: dist = 1
                 width = layer = self.N
             self.turn(letter.upper(), dist, layer, width, output_movelist)
         
