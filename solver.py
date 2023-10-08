@@ -1,8 +1,9 @@
-import time
 from typing import Callable
+
 import numpy as np
-from cube import Cube, Cube3x3
+
 from enums import Color, Face
+from cube import Cube, Cube3x3
 from error import ImpossibleScrambleException
 from utils import clean_moves, sexy_move_times
 
