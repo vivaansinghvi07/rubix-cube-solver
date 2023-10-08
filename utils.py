@@ -67,7 +67,7 @@ def clean_moves(moves: list[str]) -> list[str]:
         if root == prev_root:
             prev_move_dist += get_dist(move)
         else:
-            if prev_root is not None:
+            if prev_root is not None and prev_move_dist % 4 != 0:
                 new_moves.append(get_final_move(prev_root, prev_move_dist))
             prev_move_dist = get_dist(move)
             prev_root = root
