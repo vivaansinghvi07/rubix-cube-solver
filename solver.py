@@ -351,7 +351,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
         return []
     elif edge_diff_1 == edge_diff_2: 
         cube.parse(T_PERM + "y2" + T_PERM, output_movelist=moves)
-        return moves  
+        return clean_moves(moves)  
     
     # different rotations of one-corner swap
     if edge_diff_1 % 4 == 2:
@@ -361,7 +361,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
     elif arr_diff(cube_matrix[Face.LEFT.value][0, (0, 2)]) == 2:
         cube.turn("U", 2, 1, 1, moves)
     cube.parse(T_PERM, output_movelist=moves)
-    return moves
+    return clean_moves(moves)
 
 def solve_pll_edges(cube: Cube3x3) -> list[str]:
     """
@@ -389,7 +389,7 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
                         cube_matrix[Face.LEFT.value][0, 1].value 
                       - cube_matrix[Face.LEFT.value][0, 0].value 
                     ) % 4 == 2
-                        ):
+                ):
                     cube.parse(edge_swap, output_movelist=moves)
                 else:
                     cube.parse(edge_swap * 2, output_movelist=moves)
@@ -397,7 +397,7 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
     while np.unique(cube_matrix[Face.FRONT.value]).shape != (1,):
         cube.turn("U", 1, 1, 1, moves)
 
-    return moves
+    return clean_moves(moves)
 
 if __name__ == "__main__":
     cube = Cube.from_commandline()
