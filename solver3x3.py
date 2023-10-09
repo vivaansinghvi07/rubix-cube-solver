@@ -7,6 +7,13 @@ from cube import Cube, Cube3x3
 from error import ImpossibleScrambleException
 from utils import clean_moves, sexy_move_times
 
+__doc__ = """
+Functions for solving a 3x3. Each function works in order,
+building off the results of the previous one. It will not 
+work if you call functions in a different order, or if you
+exclude certain functions for a specific solving case.
+"""
+
 SIDE_FACES = [Face.FRONT, Face.LEFT, Face.BACK, Face.RIGHT]
 SIDE_FACE_PAIRS = [*zip(SIDE_FACES[:4], SIDE_FACES[1:4] + SIDE_FACES[0:1])]
 
@@ -412,20 +419,22 @@ class SolvePipeline:
                 print(cube)
         return clean_moves(moves)
 
+
+PIPELINE_3x3 = SolvePipeline(
+    orient_centers,
+    solve_white_cross,
+    solve_first_layer_corners,
+    solve_second_layer_edges,
+    solve_oll_edges,
+    solve_oll_corners,
+    solve_pll_corners,
+    solve_pll_edges,
+    debug=True
+)
+
 if __name__ == "__main__":
     cube = Cube.parse_args()
     assert isinstance(cube, Cube3x3)
-    pipe = SolvePipeline(
-        orient_centers,
-        solve_white_cross,
-        solve_first_layer_corners,
-        solve_second_layer_edges,
-        solve_oll_edges,
-        solve_oll_corners,
-        solve_pll_corners,
-        solve_pll_edges,
-        debug=True
-    )
     print(cube)
-    moves = pipe(cube)
+    moves = PIPELINE_3x3(cube)
     print(moves)
