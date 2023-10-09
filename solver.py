@@ -387,11 +387,9 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
                 loc = l.index(False)
                 cube.turn("U", -loc, 1, 1, moves)
                 if (
-                    (
-                        cube_matrix[Face.LEFT.value][0, 1].value 
-                      - cube_matrix[Face.LEFT.value][0, 0].value 
-                    ) % 4 == 2
-                ):
+                    cube_matrix[Face.LEFT.value][0, 1].value 
+                  - cube_matrix[Face.LEFT.value][0, 0].value 
+                ) % 4 == 2:
                     cube.parse(edge_swap, output_movelist=moves)
                 else:
                     cube.parse(edge_swap * 2, output_movelist=moves)

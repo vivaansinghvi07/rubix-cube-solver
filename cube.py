@@ -113,11 +113,14 @@ class Cube():
         
         return output
 
-    def scramble(self):
+    def scramble(self, print_scramble: bool = True):
         if 2 <= self.N <= 7:
             with open("./scrambles.json", "r") as f:
                 scrambles = json.load(f)
-            self.parse(random.choice(scrambles[str(self.N)]))
+            scramble = random.choice(scrambles[str(self.N)])
+            if print_scramble:
+                print(scramble.split())
+            self.parse(scramble)
         elif self.N > 7:
             raise NotImplementedError("I didn't make this yet sorry")
 
