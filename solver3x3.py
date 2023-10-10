@@ -1,11 +1,9 @@
-from typing import Callable
-
 import numpy as np
 
 from enums import Color, Face
 from cube import Cube, Cube3x3
 from error import ImpossibleScrambleException
-from utils import clean_moves, sexy_move_times
+from utils import sexy_move_times, SolvePipeline
 
 __doc__ = """
 Functions for solving a 3x3. Each function works in order,
@@ -405,20 +403,6 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
         cube.turn("U", 1, 1, 1, moves)
 
     return moves
-
-class SolvePipeline:
-    def __init__(self, *funcs: Callable[[Cube], list[str]], debug: bool = False):
-        self.__funcs = funcs
-        self.__debug = debug
-    def __call__(self, cube: Cube):
-        moves = []
-        for func in self.__funcs:
-            moves += func(cube)
-            if self.__debug:
-                print(f"{func.__name__}: ")
-                print(cube)
-        return clean_moves(moves)
-
 
 PIPELINE_3x3 = SolvePipeline(
     orient_centers,

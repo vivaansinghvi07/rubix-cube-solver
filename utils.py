@@ -1,5 +1,25 @@
+from __future__ import annotations
+
 import re
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cube import Cube
+
 from error import InvalidTurnException
+
+class SolvePipeline:
+    def __init__(self, *funcs: Callable[[Cube], list[str]], debug: bool = False):
+        self.__funcs = funcs
+        self.__debug = debug
+    def __call__(self, cube: Cube):
+        moves = []
+        for func in self.__funcs:
+            moves += func(cube)
+            if self.__debug:
+                print(f"{func.__name__}: ")
+                print(cube)
+        return clean_moves(moves)
 
 def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
 
