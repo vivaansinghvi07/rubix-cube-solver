@@ -63,7 +63,7 @@ def solve_tree(cube: Cube) -> list[str]:
             new_cube_string = new_cube.to_simple_string()
 
             if sol := tree.get(new_cube_string):
-                return sol + reverse_moves(new_moves)
+                return reverse_moves(sol) + new_moves
             q.append((new_cube_string, new_moves))
 
 if __name__ == "__main__":
