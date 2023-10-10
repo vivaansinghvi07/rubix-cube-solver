@@ -1,5 +1,4 @@
 import re
-from enums import Face
 from error import InvalidTurnException
 
 def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
@@ -28,6 +27,26 @@ def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
     else:
         raise InvalidTurnException("Cannot turn wider than the given layer")
 
+def get_root_move(move: str) -> str:
+    """
+    Gets the "root move" from a given move
+    It shouldn't ever be None if it works
+    """
+    return re.match(r"([1-9][0-9]*)?[rubfldRUBFLD]w?", move).group()
+
+def get_dist(move: str) -> int:
+    """
+    Returns the clockwise distance of a move
+    """
+    return 3 if move[-1] == "'" else 2 if move[-1] == '2' else 1
+
+def get_final_move(move: str, dist: int) -> str:
+    """
+    Gets the final representation of the move given root and distance
+    """
+    addon = ['', '', '2', "'"][dist % 4]
+    return f"{move}{addon}"
+
 def clean_moves(moves: list[str]) -> list[str]:
     """
     Replaces groups of moves (2, 3, 4) with the appropriate move.
@@ -38,26 +57,6 @@ def clean_moves(moves: list[str]) -> list[str]:
     >>> clean_moves(['3F', '3F', '3F', '3F'])
     []
     """
-
-    def get_root_move(move: str) -> str:
-        """
-        Gets the "root move" from a given move
-        It shouldn't ever be None if it works
-        """
-        return re.match(r"([1-9][0-9]*)?[rubfldRUBFLD]w?", move).group()
-
-    def get_dist(move: str) -> int:
-        """
-        Returns the clockwise distance of a move
-        """
-        return 3 if move[-1] == "'" else 2 if move[-1] == '2' else 1
-
-    def get_final_move(move: str, dist: int) -> str:
-        """
-        Gets the final representation of the move given root and distance
-        """
-        addon = ['', '', '2', "'"][dist % 4]
-        return f"{move}{addon}"
 
     new_moves = []
     prev_root = None
@@ -96,6 +95,20 @@ def sexy_move_times(n: int, left_hand: bool = False) -> str:
         else: moves = move_right_backwards
     
     return f" {(moves * min(n, 6 - n)).strip()} "
+
+def reverse_moves(moves: list[str]) -> list[str]:
+    """
+    Reverses a list of moves and outputs the moves to get 
+    back to the original position.
+
+    >>> reverse_moves(['R', 'U'])
+    ["U'", "R'"]
+    """
+
+    return [
+        get_final_move(get_root_move(move), -get_dist(move))
+        for move in reversed(moves)
+    ]
 
 if __name__ == "__main__":
     print(get_move('L', -1, 5, 3))
