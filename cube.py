@@ -1,4 +1,5 @@
 from __future__ import annotations
+from math import sqrt
 import re
 import json
 import random
@@ -48,6 +49,19 @@ class Cube():
         'y': (Color.WHITE, Color.YELLOW)
     }
 
+    COLOR_TO_STRING = {
+        Color.YELLOW: 'y',
+        Color.GREEN: 'g',
+        Color.RED: 'r',
+        Color.BLUE: 'b',
+        Color.WHITE: 'w',
+        Color.ORANGE: 'o'
+    }  
+
+    STRING_TO_COLOR = {
+        v: k for k, v in COLOR_TO_STRING.items()
+    }
+
     @staticmethod
     def parse_args() -> Cube:
         parser = argparse.ArgumentParser()
@@ -69,7 +83,38 @@ class Cube():
             cube.scramble()
 
         return cube
+    
+    @staticmethod
+    def from_simple_string(cube_string: str) -> Cube:
+        """
+        Returns the cube represented in the following format:
 
+        "abcdefghijklmnopqrstuvwx"
+
+            q r
+            s t
+        e f a b m n i j
+        k l c d o p k l
+            w x
+            u v
+        """
+
+        assert not {*cube_string} - {*Cube.STRING_TO_COLOR.keys()}, "Invalid characters in string."
+        N = sqrt(len(cube_string) / 6)
+        assert N == (N := int(N)), "String of invalid length (must be N**2*6 where N is an int)"
+
+        c = 0
+        cube_matrix = [np.full((N, N), Color.WHITE) for _ in range(6)]
+        for face in list(Face):
+            for i in range(N):
+                for j in range(N):
+                    cube_matrix[face.value][i][j] = Cube.STRING_TO_COLOR[cube_string[c]]
+                    c += 1
+
+        if N == 3:
+            return Cube3x3(scramble=cube_matrix)
+        return Cube(side_length=N, scramble=cube_matrix)
+    
     def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
         if scramble is None:
             self._cube = [
@@ -113,6 +158,28 @@ class Cube():
         
         return output
 
+    def to_simple_string(self) -> str:
+        """
+        Returns the cube represented as a string in the following format:
+
+            q r
+            s t
+        e f a b m n i j
+        k l c d o p k l
+            w x
+            u v
+
+        "abcdefghijklmnopqrstuvwx"
+        """
+
+        output = ""
+        for face in list(Face):
+            for i in range(self.N):
+                for j in range(self.N):
+                    output += Cube.COLOR_TO_STRING[self._cube[face.value][i][j]]
+
+        return output
+
     def scramble(self, print_scramble: bool = True):
         if 2 <= self.N <= 7:
             with open("./scrambles.json", "r") as f:
@@ -124,7 +191,7 @@ class Cube():
         elif self.N > 7:
             raise NotImplementedError("I didn't make this yet sorry")
 
-    def get_cube(self):
+    def get_matrix(self):
         """ Returns the mutable array of the cube """
         return self._cube
 
@@ -408,7 +475,7 @@ class Cube():
             return x[0]
 
         output = Cube()
-        mod_cube = output.get_cube()
+        mod_cube = output.get_matrix()
         for i in range(6):
             current_side = self._cube[i]
             for corner_x, corner_y in [(0, -1), (0, 0), (-1, 0), (-1, -1)]:
@@ -427,8 +494,8 @@ class Cube3x3(Cube):
     are made for 3x3's
     """
 
-    def __init__(self) -> None:
-        super().__init__(side_length=3)
+    def __init__(self, scramble: list[np.ndarray] | None = None) -> None:
+        super().__init__(side_length=3, scramble=scramble)
 
     def get_center_at(self, a: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
         return { 
