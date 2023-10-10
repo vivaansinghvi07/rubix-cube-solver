@@ -26,7 +26,7 @@ def orient_centers(cube: Cube3x3) -> list[str]:
     """
     assert cube.N == 3, "Can only orient centers on a 3x3"
     moves = []
-    cube_matrix = cube.get_cube()
+    cube_matrix = cube.get_matrix()
     for i in range(8):
         direction = 'R'
         if i >= 4:
@@ -45,7 +45,7 @@ def solve_white_cross(cube: Cube3x3) -> list[str]:
     """
 
     def all_edges_white(cube: Cube3x3, face: Face) -> bool:
-        face_array = cube.get_cube()[face.value]
+        face_array = cube.get_matrix()[face.value]
         return all([
             face_array[*indeces] == Color.WHITE for indeces
             in [(0, 1), (1, 0), (1, 2), (2, 1)]
@@ -323,7 +323,7 @@ def solve_oll_corners(cube: Cube3x3) -> list[str]:
         """
         Determines if the last layer is oriented correctly.
         """
-        return np.unique(cube.get_cube()[face.value]).shape == (1,)
+        return np.unique(cube.get_matrix()[face.value]).shape == (1,)
 
     moves = []
     cube.parse('x2', output_movelist=moves)
@@ -351,7 +351,7 @@ def solve_pll_corners(cube: Cube3x3) -> list[str]:
         return abs(arr[1].value - arr[0].value)
 
     moves = []
-    cube_matrix = cube.get_cube()
+    cube_matrix = cube.get_matrix()
     edge_diff_1 = arr_diff(cube_matrix[Face.FRONT.value][0, (0, 2)])
     edge_diff_2 = arr_diff(cube_matrix[Face.BACK.value][0, (0, 2)])
 
@@ -378,7 +378,7 @@ def solve_pll_edges(cube: Cube3x3) -> list[str]:
     """
 
     moves = []
-    cube_matrix = cube.get_cube()
+    cube_matrix = cube.get_matrix()
     edge_swap = (sexy_move_times(1) + sexy_move_times(1, left_hand=True)
               + sexy_move_times(-1) + sexy_move_times(-1, left_hand=True))
     
