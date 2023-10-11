@@ -1,8 +1,9 @@
 import numpy as np
-from cube import Cube, Cube3x3
-from enums import Face
-from utils import SolvePipeline, clean_moves
-from solver3x3 import orient_centers, solve_first_layer_corners, solve_oll_corners, solve_pll_corners
+
+from pycubing.enums import Face
+from pycubing.cube import Cube, Cube3x3
+from pycubing.utils import SolvePipeline, clean_moves
+from pycubing.solver.solver3x3 import orient_centers, solve_first_layer_corners, solve_oll_corners, solve_pll_corners
 
 def cube2x2_from_3x3(cube: Cube3x3) -> Cube:
     output_cube = Cube(2)

@@ -1,9 +1,9 @@
 import numpy as np
 
-from enums import Color, Face
-from cube import Cube, Cube3x3
-from error import ImpossibleScrambleException
-from utils import sexy_move_times, SolvePipeline
+from pycubing.enums import Color, Face
+from pycubing.cube import Cube, Cube3x3
+from pycubing.error import ImpossibleScrambleException
+from pycubing.utils import sexy_move_times, SolvePipeline
 
 __doc__ = """
 Functions for solving a 3x3. Each function works in order,

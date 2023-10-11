@@ -1,4 +1,4 @@
-__doc__ = """
+"""
 Uses a two-way BFS to generate solutions for a 2x2 cube.
 A different way than solving any other cube, because I 
 feel like trying to implement it.
@@ -9,6 +9,7 @@ to 14 in complexity.
 
 Note: There is no way this will work, it takes way too 
 long. It's better to use an adapted version of a 3x3 solver.
+So this is not in the real module and is just an extra.
 """
 
 import pickle
@@ -22,7 +23,6 @@ POSSIBLE_MOVES = [
     "R", "R'", "L", "L'", "U", "U'",
     "F", "F'", "B", "B'", "D", "D'"
 ]
-
 
 def parse_args():
     parser = argparse.ArgumentParser()

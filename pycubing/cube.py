@@ -4,12 +4,14 @@ import json
 import random
 import argparse
 from math import sqrt
+from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 from pynterface import Background
 
-from enums import Color, Face
-from utils import get_move
+from pycubing.utils import get_move
+from pycubing.enums import Color, Face
 
 class Cube():
 
@@ -115,7 +117,7 @@ class Cube():
             return Cube3x3(scramble=cube_matrix)
         return Cube(side_length=N, scramble=cube_matrix)
     
-    def __init__(self, side_length: int = 3, scramble: list[np.ndarray] | None = None):
+    def __init__(self, side_length: int = 3, scramble: Optional[list[np.ndarray]] = None):
         if scramble is None:
             self._cube = [
                 np.array([[c] * side_length for _ in range(side_length)])
@@ -182,7 +184,7 @@ class Cube():
 
     def scramble(self, print_scramble: bool = True):
         if 2 <= self.N <= 7:
-            with open("./scrambles.json", "r") as f:
+            with open(f"{Path(__file__).parent}/scrambles.json", "r") as f:
                 scrambles = json.load(f)
             scramble = random.choice(scrambles[str(self.N)])
             if print_scramble:
@@ -195,7 +197,7 @@ class Cube():
         """ Returns the mutable array of the cube """
         return self._cube
 
-    def parse(self, moves: str, no_spaces: bool = False, output_movelist: list[str] | None = None):
+    def parse(self, moves: str, no_spaces: bool = False, output_movelist: Optional[list[str]] = None):
         """
         Parses a list of moves given as a string with each move seperated by a space.
         The no_spaces argument can be passed to parse without considering spaces,
@@ -233,7 +235,7 @@ class Cube():
                 width = layer = self.N
             self.turn(letter.upper(), dist, layer, width, output_movelist)
         
-    def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: list[str] | None = None) -> None:
+    def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: Optional[list[str]] = None) -> None:
         """ Turns the cube depending on the given measure. """
         move_map = {
             'R': self.__turn_right,
@@ -504,16 +506,16 @@ class Cube3x3(Cube):
     are made for 3x3's
     """
 
-    def __init__(self, scramble: list[np.ndarray] | None = None) -> None:
+    def __init__(self, scramble: Optional[list[np.ndarray]] = None) -> None:
         super().__init__(side_length=3, scramble=scramble)
 
-    def get_center_at(self, a: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
+    def get_center_at(self, a: Face) -> dict[str, Union[dict[Face, Color], dict[Color, Face]]]:
         return { 
             "c2f": (d:={self._cube[a.value][1, 1]: a}),
             "f2c": {v:k for k, v in d.items()}
         }
 
-    def get_edge_between(self, a: Face, b: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
+    def get_edge_between(self, a: Face, b: Face) -> dict[str, Union[dict[Face, Color], dict[Color, Face]]]:
         """
         Gets the edge between two faces.
         """
@@ -543,7 +545,7 @@ class Cube3x3(Cube):
         }
 
 
-    def get_corner_between(self, a: Face, b: Face, c: Face) -> dict[str, dict[Face, Color] | dict[Color, Face]]:
+    def get_corner_between(self, a: Face, b: Face, c: Face) -> dict[str, Union[dict[Face, Color], dict[Color, Face]]]:
         """
         Gets the corner between two faces.
         """
@@ -580,6 +582,9 @@ class Cube3x3(Cube):
             "f2c": {v: k for k, v in colors_to_faces.items()}
         }
 
-if __name__ == "__main__":
+def demo():
     cube = Cube.parse_args()
     print(cube)
+
+if __name__ == "__main__":
+    demo()

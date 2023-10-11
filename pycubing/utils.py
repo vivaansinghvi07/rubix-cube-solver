@@ -4,9 +4,9 @@ import re
 from typing import Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cube import Cube
+    from pycubing.cube import Cube
 
-from error import InvalidTurnException
+from pycubing.error import InvalidTurnException
 
 class SolvePipeline:
     def __init__(self, *funcs: Callable[[Cube], list[str]], debug: bool = False):
