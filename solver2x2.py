@@ -1,75 +1,41 @@
-__doc__ = """
-Uses a two-way BFS to generate solutions for a 2x2 cube.
-A different way than solving any other cube, because I 
-feel like trying to implement it.
+import numpy as np
+from cube import Cube, Cube3x3
+from enums import Face
+from utils import SolvePipeline, clean_moves
+from solver3x3 import orient_centers, solve_first_layer_corners, solve_oll_corners, solve_pll_corners
 
-The god's number for a 2x2 is 14, so I need to build 
-two BFS trees, one before solve, one after, that sum
-to 14 in complexity.
-
-Note: There is no way this will work, it takes way too 
-long. It's better to use an adapted version of a 3x3 solver.
-"""
-
-import pickle
-import argparse
-from copy import copy
-
-from cube import Cube
-from utils import reverse_moves
-
-POSSIBLE_MOVES = [
-    "R", "R'", "L", "L'", "U", "U'",
-    "F", "F'", "B", "B'", "D", "D'"
-]
+def cube2x2_from_3x3(cube: Cube3x3) -> Cube:
+    output_cube = Cube(2)
+    output_matrix = output_cube.get_matrix()
+    cube_matrix = cube.get_matrix()
+    for face in list(Face):
+        for corner in [(0, 0), (0, -1), (-1, 0), (-1, -1)]:
+            output_matrix[face.value][*corner] = cube_matrix[face.value][*corner]
+    return output_cube
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-g", "--generate-tree-depth", help="generate a new tree with given depth", type=int, required=False)
-    parser.add_argument("-s", "--scramble", help="a 2x2 scramble to solve", type=str, required=False)
-    return parser.parse_args()
+def orient_top_until_solve(cube: Cube) -> list[str]:
+    moves = []
+    while not np.unique(cube.get_matrix()[Face.FRONT.value]).shape == (1,):
+        cube.turn('U', 1, 1, 1, moves)
+    return clean_moves(moves)
 
-def generate_base_tree(depth: int) -> None:
-    paths = {Cube(2).to_simple_string(): []}
-    q = [([*paths][0], [])] 
-    while q:
-        current_scramble, moves = q.pop()
-        if len(moves) == depth:
-            continue
-        for move in POSSIBLE_MOVES:
-            new_cube = Cube.from_simple_string(current_scramble)
-            new_moves = copy(moves)
-            new_cube.turn(move[0], 1 if len(move) == 1 else -1, 1, 1, new_moves)
-            new_cube_string = new_cube.to_simple_string()
-            paths[new_cube_string] = new_moves
-            q.append((new_cube_string, new_moves))
-
-    with open('2x2_path_tree.pkl', 'wb') as f:
-        pickle.dump(paths, f)
-
-def solve_tree(cube: Cube) -> list[str]:
-    
-    with open('2x2_path_tree.pkl', 'rb') as f:
-        tree = pickle.load(f)
-    
-    q = [(cube.to_simple_string(), [])]
-    while True:
-        current_scramble, moves = q.pop()
-        for move in POSSIBLE_MOVES:
-            new_cube = Cube.from_simple_string(current_scramble)
-            new_moves = copy(moves)
-            new_cube.turn(move[0], 1 if len(move) == 1 else -1, 1, 1, new_moves)
-            new_cube_string = new_cube.to_simple_string()
-
-            if sol := tree.get(new_cube_string):
-                return reverse_moves(sol) + new_moves
-            q.append((new_cube_string, new_moves))
+PIPELINE_2x2 = SolvePipeline(
+    orient_centers,
+    solve_first_layer_corners,
+    solve_oll_corners, 
+    solve_pll_corners
+)
 
 if __name__ == "__main__":
-    args = parse_args()
-    if args.generate_tree_depth is not None:
-        generate_base_tree(args.generate_tree_depth)
-    cube = Cube(2)
-    cube.parse(args.scramble)
-    print(solve_tree(cube))
+    PIPELINE_2x2.set_debug(True)
+    cube = Cube.parse_args()
+    assert cube.N == 2
+    print(cube)
+    cube3x3 = cube.get_3x3()
+    moves = PIPELINE_2x2(cube3x3)
+    cube = cube2x2_from_3x3(cube3x3)
+    moves += orient_top_until_solve(cube)
+    print(moves)
+    print(cube)
+
