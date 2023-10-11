@@ -22,7 +22,6 @@ def orient_centers(cube: Cube3x3) -> list[str]:
         - Rotate the middle layer until white is on the bottom.
         - If unsuccessful, rotate the middle layer behind the front.
     """
-    assert cube.N == 3, "Can only orient centers on a 3x3"
     moves = []
     cube_matrix = cube.get_matrix()
     for i in range(8):
@@ -128,14 +127,14 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
         corner = cube.get_corner_between(a, b, Face.BOTTOM)
         return {
             "permuted": (
-                cube.get_edge_between(a, Face.BOTTOM)["f2c"][a] in corner["c2f"] and 
-                cube.get_edge_between(b, Face.BOTTOM)["f2c"][b] in corner["c2f"] and 
+                cube.get_center_at(a)["f2c"][a] in corner["c2f"] and 
+                cube.get_center_at(b)["f2c"][b] in corner["c2f"] and 
                 Color.WHITE in corner["c2f"]
             ),
             "oriented": (
                 corner["f2c"][Face.BOTTOM] == Color.WHITE and 
-                corner["f2c"][a] == cube.get_edge_between(a, Face.BOTTOM)["f2c"][a] and 
-                corner["f2c"][b] == cube.get_edge_between(b, Face.BOTTOM)["f2c"][b]
+                corner["f2c"][a] == cube.get_center_at(a)["f2c"][a] and 
+                corner["f2c"][b] == cube.get_center_at(b)["f2c"][b]
             )
         }
 
@@ -155,8 +154,8 @@ def solve_first_layer_corners(cube: Cube3x3) -> list[str]:
         while all(is_corner_solved(cube, Face.FRONT, Face.RIGHT).values()):
             cube.turn("D", 1, 2, 2, moves)
 
-        right_color = cube.get_edge_between(Face.RIGHT, Face.BOTTOM)["f2c"][Face.RIGHT]
-        front_color = cube.get_edge_between(Face.FRONT, Face.BOTTOM)["f2c"][Face.FRONT] 
+        right_color = cube.get_center_at(Face.RIGHT)["f2c"][Face.RIGHT]
+        front_color = cube.get_center_at(Face.FRONT)["f2c"][Face.FRONT] 
         
         # see if the corner is in the right place and oriented wrong
         if is_corner_solved(cube, Face.FRONT, Face.RIGHT)["permuted"]:
@@ -319,9 +318,12 @@ def solve_oll_corners(cube: Cube3x3) -> list[str]:
 
     def is_oll_solved(cube: Cube3x3, face: Face) -> bool:
         """
-        Determines if the last layer is oriented correctly.
+        Determines if the last layer corners are oriented correctly.
         """
-        return np.unique(cube.get_matrix()[face.value]).shape == (1,)
+        return len({
+            cube.get_corner_between(*pair, face)["f2c"][face]
+            for pair in SIDE_FACE_PAIRS
+        }) == 1
 
     moves = []
     cube.parse('x2', output_movelist=moves)
@@ -413,10 +415,10 @@ PIPELINE_3x3 = SolvePipeline(
     solve_oll_corners,
     solve_pll_corners,
     solve_pll_edges,
-    debug=True
 )
 
 if __name__ == "__main__":
+    PIPELINE_3x3.set_debug(True)
     cube = Cube.parse_args()
     assert isinstance(cube, Cube3x3)
     print(cube)
