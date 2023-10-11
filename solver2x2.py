@@ -13,7 +13,6 @@ def cube2x2_from_3x3(cube: Cube3x3) -> Cube:
             output_matrix[face.value][*corner] = cube_matrix[face.value][*corner]
     return output_cube
 
-
 def orient_top_until_solve(cube: Cube) -> list[str]:
     moves = []
     while not np.unique(cube.get_matrix()[Face.FRONT.value]).shape == (1,):
