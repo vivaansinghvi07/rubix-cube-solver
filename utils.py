@@ -12,6 +12,8 @@ class SolvePipeline:
     def __init__(self, *funcs: Callable[[Cube], list[str]], debug: bool = False):
         self.__funcs = funcs
         self.__debug = debug
+    def set_debug(self, debug: bool):
+        self.__debug = debug 
     def __call__(self, cube: Cube):
         moves = []
         for func in self.__funcs:
