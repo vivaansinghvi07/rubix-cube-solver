@@ -1,9 +1,9 @@
 from __future__ import annotations
-from math import sqrt
 import re
 import json
 import random
 import argparse
+from math import sqrt
 
 import numpy as np
 from pynterface import Background
@@ -461,25 +461,35 @@ class Cube():
                 self._cube[face.value], -(turns % 4)
             )
 
-    def get_3x3(self) -> Cube:
+    def get_3x3(self) -> Cube3x3:
         """
         Gets the 3x3 form of the cube.
-        Throws an error if: 
-            the cube is smaller than a 3x3 
+        Throws an error if:  
             the cube cannot be simplified
         """
-        assert self.N > 2, "2x2 cannot be converted to 3x3"
+
+        output = Cube3x3()
+        mod_cube = output.get_matrix()
+
+        # fill edges and centers with filler
+        if self.N == 2:
+            ref_cube_matrix = Cube3x3().get_matrix()
+            for face in list(Face):
+                for corner in [(0, 0), (0, -1), (-1, 0), (-1, -1)]:
+                    mod_cube[face.value][*corner] = self._cube[face.value][*corner]
+                for edge in [(0, 1), (1, 0), (1, -1), (-1, 1)]:
+                    mod_cube[face.value][*edge] = Color.WHITE
+                mod_cube[face.value][1, 1] = ref_cube_matrix[face.value][1, 1]
+            return output
 
         def get_scalar(x: np.ndarray) -> Color:
             assert x.shape == (1,), "Cube could not be converted to a 3x3"
             return x[0]
 
-        output = Cube()
-        mod_cube = output.get_matrix()
         for i in range(6):
             current_side = self._cube[i]
-            for corner_x, corner_y in [(0, -1), (0, 0), (-1, 0), (-1, -1)]:
-                mod_cube[i][corner_y, corner_x] = current_side[corner_y, corner_x]
+            for corner in [(0, -1), (0, 0), (-1, 0), (-1, -1)]:
+                mod_cube[i][*corner] = current_side[*corner]
             for edge_y, edge_x in [(0, 1), (1, 0), (1, -1), (-1, 1)]:
                 mod_cube[i][edge_y, edge_x] = get_scalar(np.unique(current_side[1:-1, edge_x] 
                                                                    if edge_y == 1 else 
