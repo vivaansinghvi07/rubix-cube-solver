@@ -16,8 +16,8 @@ import pickle
 import argparse
 from copy import copy
 
-from cube import Cube
-from utils import reverse_moves
+from pycubing.cube import Cube
+from pycubing.utils import reverse_moves
 
 POSSIBLE_MOVES = [
     "R", "R'", "L", "L'", "U", "U'",
