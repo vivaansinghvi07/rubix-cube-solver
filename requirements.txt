@@ -1,0 +1,2 @@
+numpy~=1.26.0
+pynterface==0.2.3

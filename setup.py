@@ -1,8 +1,11 @@
 import pycubing
 from setuptools import setup, find_packages
 
-with open("README.md", "r") as f:
+with open("./README.md", "r") as f:
     description = f.read()
+
+with open("./requirements.txt", 'r') as f:
+    requirements = f.read()
 
 setup(
     name="pycubing",
@@ -16,7 +19,5 @@ setup(
     packages=find_packages(),
     python_requires='>=3.8',
     include_package_data=True,
-    # project_urls={
-    #     "Documentation": "https://pynterface.readthedocs.io/en/latest/"
-    # }
+    install_requires=requirements
 )
