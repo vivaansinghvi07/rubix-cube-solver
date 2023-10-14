@@ -1,3 +1,5 @@
+import sys
+from time import perf_counter
 from pycubing.cube import Cube
 from pycubing.enums import Face
 
@@ -71,6 +73,11 @@ def solve_centers(cube: Cube) -> list[str]:
 if __name__ == "__main__":
     cube = Cube.parse_args()
     print(cube)
-    print(solve_centers(cube))
+    start = perf_counter()
+    moves = solve_centers(cube)
+    end = perf_counter()
+    if '-p' in sys.argv:
+        print(moves)
     print(cube)
+    print(f"Time: {end - start :.2f}")
     

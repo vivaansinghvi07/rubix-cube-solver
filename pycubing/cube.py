@@ -70,6 +70,7 @@ class Cube():
         parser.add_argument("-n", "--side-length", help="the side length of the cube", type=int)
         parser.add_argument("-r", "--random-scramble", help="initialize the cube with a random scramble", action="store_true")
         parser.add_argument("-c", "--custom-scramble", help="initialize the cube with your own scramble", type=str)
+        parser.add_argument("-p", "--print-scramble", help="print the scramble of the cube", action="store_true")
         args = parser.parse_args()
         
         if not args.side_length: 
@@ -82,7 +83,7 @@ class Cube():
         if args.custom_scramble:
             cube.parse(args.custom_scramble)
         elif args.random_scramble:
-            cube.scramble()
+            cube.scramble(args.print_scramble)
 
         return cube
     
@@ -182,7 +183,7 @@ class Cube():
 
         return output
 
-    def scramble(self, print_scramble: bool = True):
+    def scramble(self, print_scramble: bool = False):
         if 2 <= self.N <= 7:
             with open(f"{Path(__file__).parent}/scrambles.json", "r") as f:
                 scrambles = json.load(f)
@@ -191,23 +192,28 @@ class Cube():
                 print(scramble.split())
             self.parse(scramble)
         elif self.N > 7:
-            raise NotImplementedError("I didn't make this yet sorry")
+            moves = []
+            for _ in range(self.N**2*2):
+                dist = random.randint(1, 3)
+                layer = random.randint(1, self.N)
+                width = random.randint(1, layer)
+                move = random.choice(['R', 'L', 'U', 'B', 'D', 'F'])
+                moves.extend(get_move(move, dist, layer, width))
+            self.parse(" ".join(moves))
+            if print_scramble:
+                print(moves)
 
     def get_matrix(self):
         """ Returns the mutable array of the cube """
         return self._cube
 
-    def parse(self, moves: str, no_spaces: bool = False, output_movelist: Optional[list[str]] = None):
+    def parse(self, moves: str, output_movelist: Optional[list[str]] = None):
         """
         Parses a list of moves given as a string with each move seperated by a space.
         The no_spaces argument can be passed to parse without considering spaces,
         but requires the cube to be 5x5x5 or less.
         """
-        if no_spaces:
-            assert self.N <= 5
-            move_list = re.split(r"(?=[A-Z])", moves)
-        else:
-            move_list = moves.split()
+        move_list = moves.split()
         for m in filter(lambda x: bool(x.strip()), move_list):
             dist = width = layer = 1
             letter = re.search(r'[rfdublRFDUBLxyz]', m).group()
