@@ -23,7 +23,7 @@ class SolvePipeline:
                 print(cube)
         return clean_moves(moves)
 
-def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
+def get_move(side: str, dist: int, layer: int = 1, width: int = 1, N: int = 1) -> list[str]:
 
     dist %= 4
     if dist == 0:
@@ -33,7 +33,10 @@ def get_move(side: str, dist: int, layer: int = 1, width: int = 1) -> list[str]:
     dist_str = '2' if dist == 2 else "'" if dist == 3 else ''
     output_str = f"{{}}{side}{{}}{{}}"
     
-    if width == 1:
+    if layer == width == N:
+        rotation_str = ['x', 'y', 'z'][['R', 'U', 'F', 'L', 'D', 'B'].index(side) % 3]
+        return [rotation_str + (dist_str + "'" * int(side in ['L', 'B', 'D'])).replace("''", "")]
+    elif width == 1:
         return [output_str.format(layer_str, '', dist_str)]
     elif layer == width:
         return [output_str.format(layer_str, 'w', dist_str)]
@@ -54,7 +57,7 @@ def get_root_move(move: str) -> str:
     Gets the "root move" from a given move
     It shouldn't ever be None if it works
     """
-    return re.match(r"([1-9][0-9]*)?[rubfldRUBFLD]w?", move).group()
+    return re.match(r"([1-9][0-9]*)?[rubfldRUBFLDxyz]w?", move).group()
 
 def get_dist(move: str) -> int:
     """
@@ -132,5 +135,8 @@ def reverse_moves(moves: list[str]) -> list[str]:
         for move in reversed(moves)
     ]
 
+   
 if __name__ == "__main__":
-    print(get_move('L', -1, 5, 3))
+    moves = ["R", "U", "R'", "U'", "F", "D", "F'"]
+    print(f'{reverse_moves(moves) = }')
+    print(get_move('L', -1, 5, 3, 11))

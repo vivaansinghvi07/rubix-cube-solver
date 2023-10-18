@@ -5,6 +5,7 @@ import random
 import argparse
 from math import sqrt
 from pathlib import Path
+from copy import deepcopy
 from typing import Optional, Union
 
 import numpy as np
@@ -86,7 +87,7 @@ class Cube():
             cube.scramble(args.print_scramble)
 
         return cube
-    
+
     @staticmethod
     def from_simple_string(cube_string: str) -> Cube:
         """
@@ -117,7 +118,7 @@ class Cube():
         if N == 3:
             return Cube3x3(scramble=cube_matrix)
         return Cube(side_length=N, scramble=cube_matrix)
-    
+
     def __init__(self, side_length: int = 3, scramble: Optional[list[np.ndarray]] = None):
         if scramble is None:
             self._cube = [
@@ -168,7 +169,7 @@ class Cube():
             q r
             s t
         e f a b m n i j
-        k l c d o p k l
+        g h c d o p k l
             w x
             u v
 
@@ -198,7 +199,7 @@ class Cube():
                 layer = random.randint(1, self.N)
                 width = random.randint(1, layer)
                 move = random.choice(['R', 'L', 'U', 'B', 'D', 'F'])
-                moves.extend(get_move(move, dist, layer, width))
+                moves.extend(get_move(move, dist, layer, width, self.N))
             self.parse(" ".join(moves))
             if print_scramble:
                 print(moves)
@@ -253,7 +254,7 @@ class Cube():
         }
         move_map[move](dist, layer, width)
         if movelist is not None:
-            movelist.extend(get_move(move, dist, layer, width))
+            movelist.extend(get_move(move, dist, layer, width, self.N))
         
     def __turn_right(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
@@ -504,6 +505,47 @@ class Cube():
                                                                    current_side[edge_y, 1:-1]))
             mod_cube[i][1, 1] = get_scalar(np.unique(current_side[1:-1, 1:-1]))
         return output
+
+    def get_rotation_to(self, other: Cube) -> list[str]:
+        """
+        Determines the ['x', 'y', 'z'] movements to turn the self
+        into the given cube (i.e. cube rotations rather than turns)
+        Assumes that the rotation is possible in the first place.
+        """
+
+        rotations = []
+        target_corner_faces = [Face.TOP, Face.LEFT, Face.FRONT]
+
+        # determine top left corner for the original
+        top_left_corner = other.get_3x3().get_corner_between(*target_corner_faces)
+        target_colors = set(top_left_corner["c2f"])
+
+        # convert cube to a 3x3
+        self_copy = self.get_3x3()
+        for z in [Face.FRONT, Face.BACK]:
+            for y in [Face.TOP, Face.BOTTOM]:
+                for x in [Face.LEFT, Face.RIGHT]:
+                    if target_colors == set((c := self_copy.get_corner_between(x, y, z))["c2f"]):
+                        corner = c
+
+        # rotate the corner to bring to proper place 
+        if Face.BACK in corner["f2c"]:
+            self_copy.parse('y2', output_movelist=rotations)
+        if (Face.LEFT in corner["f2c"]) == (Face.BACK in corner["f2c"]):
+            self_copy.parse('y', output_movelist=rotations)           # corner is now in the left two spots
+        if Face.BOTTOM in corner["f2c"]:
+            self_copy.parse('x', output_movelist=rotations)           # corner is now in the top left corner
+        assert all(color in self_copy.get_corner_between(*target_corner_faces)["c2f"] for color in target_colors)
+
+        # determine correct way of orienting items
+        match self_copy.get_corner_between(*target_corner_faces)["c2f"][top_left_corner["f2c"][Face.FRONT]]:
+            case Face.FRONT: pass
+            case Face.TOP: self_copy.parse("y x'", output_movelist=rotations)
+            case Face.LEFT: self_copy.parse("x y'", output_movelist=rotations)
+            case _: raise Exception("Something went wrong.")
+
+        assert self_copy.get_corner_between(*target_corner_faces) == top_left_corner
+        return rotations
 
 class Cube3x3(Cube):
     """
