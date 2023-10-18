@@ -66,11 +66,11 @@ def solve_tree(cube: Cube) -> list[str]:
         for move in POSSIBLE_MOVES:
             new_cube = Cube.from_simple_string(current_scramble)
             new_moves = copy(moves)
-            new_cube.turn(move[0], 1 if len(move) == 1 else -1, 1, 1, new_moves)
+            new_cube.parse(move, output_movelist=new_moves)
             new_cube_string = new_cube.to_simple_string()
 
             if sol := tree.get(standardize_simple_string(new_cube_string)):
-                return new_moves + reverse_moves(sol) 
+                return new_moves + new_cube.get_rotation_to(Cube(2)) + reverse_moves(sol)
             q.append((new_cube_string, new_moves))
 
 if __name__ == "__main__":
