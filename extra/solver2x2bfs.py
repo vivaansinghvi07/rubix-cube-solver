@@ -18,9 +18,20 @@ from pycubing.enums import Face
 from pycubing.utils import reverse_moves, clean_moves
 
 POSSIBLE_MOVES = [
-    'y', "y'", 'x', "x'", 'z', "z'"
+    "R", "R'", "D'", "D", "B", "B'"
 ]
 
+def standardize_simple_string(simple_string: str) -> str:
+    """
+    Rearranges "simple strings" of a cube into a more consistent format.
+    This is done in order to detect cases where the cube is the same but rotated.
+    Ignoring illegal cases, this is guaranteed to cause no collisions.
+    """
+    cube = Cube.from_simple_string(simple_string)
+    ref_cube = Cube(2)
+    cube.parse(" ".join(cube.get_rotation_to(ref_cube)))
+    return cube.to_simple_string()
+    
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-g", "--generate-tree-depth", help="generate a new tree with given depth", type=int, required=False)
@@ -58,7 +69,7 @@ def solve_tree(cube: Cube) -> list[str]:
             new_cube.turn(move[0], 1 if len(move) == 1 else -1, 1, 1, new_moves)
             new_cube_string = new_cube.to_simple_string()
 
-            if sol := tree.get(new_cube_string):
+            if sol := tree.get(standardize_simple_string(new_cube_string)):
                 return new_moves + reverse_moves(sol) 
             q.append((new_cube_string, new_moves))
 
