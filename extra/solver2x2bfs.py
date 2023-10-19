@@ -81,5 +81,6 @@ if __name__ == "__main__":
         cube = Cube.parse_args()
         cube_matrix = cube.get_matrix()
         assert cube.N == 2, "Method only works with 2x2 cubes"
+        print(cube)
         if not all([np.unique(cube_matrix[face.value]).shape == (1,) for face in list(Face)]):
             print(clean_moves(solve_tree(cube)))
