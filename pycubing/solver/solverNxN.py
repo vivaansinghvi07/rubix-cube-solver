@@ -1,4 +1,5 @@
 import sys
+from typing import Literal
 import numpy as np
 from time import perf_counter, sleep
 
@@ -160,6 +161,16 @@ def solve_edges(cube: Cube) -> list[str]:
             if (cube_matrix[Face.FRONT.value][i, -1] == right_color and 
             cube_matrix[Face.RIGHT.value][i, 0] == front_color)
         ]
+    
+    def is_front_edge_solved(cube: Cube, border: Literal[Face.BOTTOM, Face.TOP]) -> bool:  
+        """
+        Determines if the Front Top or Bottom edge is in a solved state
+        """
+        cube_matrix = cube.get_matrix()
+        return len(set([
+            (cube_matrix[Face.FRONT.value][0, i], cube_matrix[border.value][-1, i])
+            for i in range(1, cube.N - 1)
+        ])) == 1 
 
     # generate edges to compare the cube to 
     reference_edges = Cube3x3()
@@ -176,6 +187,9 @@ def solve_edges(cube: Cube) -> list[str]:
         target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
         front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
         target_color_set = {front_color, right_color}
+        adjust_face = Face.TOP if i < 4 else Face.BOTTOM
+        sub_move = "R U' R'" if i < 4 else "R' D R" 
+        search_move = "U" if i < 4 else "D"
         while not is_main_edge_solved(cube, reference_edges):
 
 
@@ -236,13 +250,7 @@ def solve_edges(cube: Cube) -> list[str]:
 
 
             # put the edge in the top
-            adjust_face = Face.TOP if i < 4 else Face.BOTTOM
-            sub_move = "R U' R'" if i < 4 else "R' D R" 
-            search_move = "U" if i < 4 else "D"
-            while len(set([
-                (cube_matrix[Face.FRONT.value][0, i], cube_matrix[adjust_face.value][-1, i])
-                for i in range(1, cube.N - 1)
-            ])) == 1:
+            while is_front_edge_solved(cube, adjust_face):
                 parse_both(cube, reference_edges, search_move, moves)
             parse_both(cube, reference_edges, sub_move, moves)
 
@@ -254,22 +262,13 @@ def solve_edges(cube: Cube) -> list[str]:
                     cube.turn('U', -slot-1, layer, 1, moves)
 
             # put the edge back 
-            a = 0
             while not set(reference_edges.get_edge_between(Face.FRONT, adjust_face)["c2f"]) == target_color_set:
-                if (a:=a+1) == 6:
-                    break
                 parse_both(cube, reference_edges, search_move, moves)
             
             parse_both(cube, reference_edges, sub_move, moves=moves)
             front_color, right_color = right_color, front_color
 
-        adjust_face = Face.TOP if i < 4 else Face.BOTTOM
-        sub_move = "R U' R'" if i < 4 else "R' D R" 
-        search_move = "U" if i < 4 else "D"
-        while len(set([
-            (cube_matrix[Face.FRONT.value][0, i], cube_matrix[adjust_face.value][-1, i])
-            for i in range(1, cube.N - 1)
-        ])) == 1:
+        while is_front_edge_solved(cube, adjust_face):
             parse_both(cube, reference_edges, search_move, moves)
         parse_both(cube, reference_edges, sub_move, moves)
 
