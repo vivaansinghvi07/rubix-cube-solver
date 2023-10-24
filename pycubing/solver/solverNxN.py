@@ -89,12 +89,6 @@ def solve_edges(cube: Cube) -> list[str]:
     then worry about the next stuff
     """
 
-    def turn_both(cube: Cube, ref: Cube3x3, *args, moves: list[str]) -> None:
-        """ Turns both the cube and the reference """
-        assert len(args) == 4
-        cube.turn(*args, moves)
-        ref.turn(*args)
-
     def parse_both(cube: Cube, ref: Cube3x3, prompt: str, moves: list[str]) -> None:
         """ Turns both the cube and the reference """
         cube.parse(prompt, output_movelist=moves)
@@ -178,85 +172,109 @@ def solve_edges(cube: Cube) -> list[str]:
 
     # taking one edge and solving it 
     moves = []
-    target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
-    front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
-    target_color_set = {front_color, right_color}
-    while not is_main_edge_solved(cube, reference_edges):
+    for i in range(8):
+        target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
+        front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
+        target_color_set = {front_color, right_color}
+        while not is_main_edge_solved(cube, reference_edges):
 
 
-        # take care of flipped edge pieces - should only occur once 
-        if any(l:=[
-            cube_matrix[Face.FRONT.value][row, -1] == right_color and 
-            cube_matrix[Face.RIGHT.value][row, 0] == front_color
-            for row in range(1, cube.N-1)
-        ]):
-            target_layers = [i+2 for i in range(len(l)) if l[i]]
-            for layer in target_layers:
-                cube.turn('U', 1, layer, 1, moves)
-            parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
-            for layer in target_layers:
-                cube.turn('U', -1, layer, 1, moves)
+            # take care of flipped edge pieces - should only occur once 
+            if any(l:=[
+                cube_matrix[Face.FRONT.value][row, -1] == right_color and 
+                cube_matrix[Face.RIGHT.value][row, 0] == front_color
+                for row in range(1, cube.N-1)
+            ]):
+                target_layers = [i+2 for i in range(len(l)) if l[i]]
+                for layer in target_layers:
+                    cube.turn('U', 1, layer, 1, moves)
+                parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
+                right_color, front_color = front_color, right_color
+                for layer in target_layers:
+                    cube.turn('U', -1, layer, 1, moves)
+
+            #debug_print(cube, "orienting")
 
 
-        # keep turning to find empty slots to place things in
-        oriented_layers = []
-        nonoriented_layers = []
-        for _ in range(3):
+            # keep turning to find empty slots to place things in
+            oriented_layers = []
+            nonoriented_layers = []
+            for _ in range(3):
+                cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
+                reference_edges.turn('U', 1, 2, 1)
+                
+                # insert a candidate on the top or bottom into the slot
+                if not any_piece_in_main_edge(cube, target_color_set):
+                    for _ in range(4):
+                        parse_both(cube, reference_edges, 'U D', moves=moves)
+                        if any_piece_in_top_edge(cube, target_color_set):
+                            parse_both(cube, reference_edges, "R U' R'", moves=moves)
+                            break
+                        elif any_piece_in_bottom_edge(cube, target_color_set):
+                            parse_both(cube, reference_edges, "R' D R", moves=moves)
+                            break
+
+                # determine which pieces are in the proper position
+                oriented_layers.append(get_oriented_pieces_in_main_edge(cube, front_color, right_color))
+                nonoriented_layers.append(get_unoriented_pieces_in_main_edge(cube, front_color, right_color))
+
+            # at this point, we need to place everything we found into the main edge 
+            #debug_print(cube, "filled sides")
+
+            # put the cube back to normal position
             cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
             reference_edges.turn('U', 1, 2, 1)
             
-            # insert a candidate on the top or bottom into the slot
-            if not any_piece_in_main_edge(cube, target_color_set):
-                for _ in range(4):
-                    parse_both(cube, reference_edges, 'U D', moves=moves)
-                    if any_piece_in_top_edge(cube, target_color_set):
-                        parse_both(cube, reference_edges, "R U' R'", moves=moves)
-                        break
-                    elif any_piece_in_bottom_edge(cube, target_color_set):
-                        parse_both(cube, reference_edges, "R' D R", moves=moves)
-                        break
-
-            # determine which pieces are in the proper position
-            oriented_layers.append(get_oriented_pieces_in_main_edge(cube, front_color, right_color))
-            nonoriented_layers.append(get_unoriented_pieces_in_main_edge(cube, front_color, right_color))
-
-        # at this point, we need to place everything we found into the main edge 
-     
-
-        # put the cube back to normal position
-        cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
-        reference_edges.turn('U', 1, 2, 1)
-        
-        # insert all possible edge pieces
-        for slot in range(3):
-            for layer in oriented_layers[slot]:
-                cube.turn('U', slot+1, layer, 1, moves)
-        parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
-        for slot in range(3):
-            for layer in nonoriented_layers[slot]:
-                cube.turn('U', slot+1, layer, 1, moves)
+            # insert all possible edge pieces
+            for slot in range(3):
+                for layer in oriented_layers[slot]:
+                    cube.turn('U', slot+1, layer, 1, moves)
+            parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
+            for slot in range(3):
+                for layer in nonoriented_layers[slot]:
+                    cube.turn('U', slot+1, layer, 1, moves)
 
 
-        # put the edge in the top
-        parse_both(cube, reference_edges, "R U R'", moves=moves)
+            # put the edge in the top
+            adjust_face = Face.TOP if i < 4 else Face.BOTTOM
+            sub_move = "R U' R'" if i < 4 else "R' D R" 
+            search_move = "U" if i < 4 else "D"
+            while len(set([
+                (cube_matrix[Face.FRONT.value][0, i], cube_matrix[adjust_face.value][-1, i])
+                for i in range(1, cube.N - 1)
+            ])) == 1:
+                parse_both(cube, reference_edges, search_move, moves)
+            parse_both(cube, reference_edges, sub_move, moves)
 
-        # get the centers back to normal 
-        for slot in range(3):
-            for layer in oriented_layers[slot]:
-                cube.turn('U', -slot-1, layer, 1, moves)
-            for layer in nonoriented_layers[slot]:
-                cube.turn('U', -slot-1, layer, 1, moves)
+            # get the centers back to normal 
+            for slot in range(3):
+                for layer in oriented_layers[slot]:
+                    cube.turn('U', -slot-1, layer, 1, moves)
+                for layer in nonoriented_layers[slot]:
+                    cube.turn('U', -slot-1, layer, 1, moves)
 
-        # put the edge back 
-        parse_both(cube, reference_edges, "R U' R'", moves=moves)
-        front_color, right_color = right_color, front_color
+            # put the edge back 
+            a = 0
+            while not set(reference_edges.get_edge_between(Face.FRONT, adjust_face)["c2f"]) == target_color_set:
+                if (a:=a+1) == 6:
+                    break
+                parse_both(cube, reference_edges, search_move, moves)
+            
+            parse_both(cube, reference_edges, sub_move, moves=moves)
+            front_color, right_color = right_color, front_color
 
+        adjust_face = Face.TOP if i < 4 else Face.BOTTOM
+        sub_move = "R U' R'" if i < 4 else "R' D R" 
+        search_move = "U" if i < 4 else "D"
+        while len(set([
+            (cube_matrix[Face.FRONT.value][0, i], cube_matrix[adjust_face.value][-1, i])
+            for i in range(1, cube.N - 1)
+        ])) == 1:
+            parse_both(cube, reference_edges, search_move, moves)
+        parse_both(cube, reference_edges, sub_move, moves)
 
-        # step 1: determine which ones are oriented correctly, insert them
-        # step 2: determine which ones are not oriented correctly, flip the edge and then insert them
-        # step 3: swap with a top piece 
-        # step 4: recover centers 
-        # step 5: put the edge back 
+        #debug_print(cube, f"completed edge {i+1}")
+
     return moves
 
 if __name__ == "__main__":
