@@ -2,8 +2,9 @@ import sys
 import numpy as np
 from time import perf_counter, sleep
 
-from pycubing.cube import Cube, Cube3x3
+from pycubing.utils import debug_print
 from pycubing.enums import Face, Color
+from pycubing.cube import Cube, Cube3x3
 
 def solve_centers(cube: Cube) -> list[str]:
     """
@@ -67,8 +68,8 @@ def solve_centers(cube: Cube) -> list[str]:
                         cube.turn('L', slice_dist, layer2, 1, moves)
                         cube.turn(adjust_layer, -adjust_dist, 1, 1, moves)
 
-                        print(cube, flush=True)
-                        sleep(0.005)
+                        # print(cube, flush=True)
+                        # sleep(0.005)
 
         solved_colors.add(target_color)
                         
@@ -92,12 +93,12 @@ def solve_edges(cube: Cube) -> list[str]:
         """ Turns both the cube and the reference """
         assert len(args) == 4
         cube.turn(*args, moves)
-        reference_edges.turn(*args)
+        ref.turn(*args)
 
     def parse_both(cube: Cube, ref: Cube3x3, prompt: str, moves: list[str]) -> None:
         """ Turns both the cube and the reference """
         cube.parse(prompt, output_movelist=moves)
-        reference_edges.parse(prompt)
+        ref.parse(prompt)
 
     def is_main_edge_solved(cube: Cube, reference_edges: Cube3x3) -> bool:
         """ Determines if the edge between Front and Right is solved. """
@@ -143,6 +144,28 @@ def solve_edges(cube: Cube) -> list[str]:
             } == colors
             for i in range(1, cube.N-1)
         ])
+    
+    def get_oriented_pieces_in_main_edge(cube: Cube, front_color: Color, right_color: Color) -> list[int]:
+        """ 
+        Returns the well-oriented pieces in the main edge. 
+        Ordered from top to bottom.
+        """
+        return [
+            i + 1 for i in range(1, cube.N-1)
+            if (cube_matrix[Face.FRONT.value][i, -1] == front_color and 
+            cube_matrix[Face.RIGHT.value][i, 0] == right_color)
+        ]
+
+    def get_unoriented_pieces_in_main_edge(cube: Cube, front_color: Color, right_color: Color) -> list[int]:
+        """ 
+        Returns the well-oriented pieces in the main edge. 
+        Ordered from top to bottom.
+        """
+        return [
+            i + 1 for i in range(1, cube.N-1)
+            if (cube_matrix[Face.FRONT.value][i, -1] == right_color and 
+            cube_matrix[Face.RIGHT.value][i, 0] == front_color)
+        ]
 
     # generate edges to compare the cube to 
     reference_edges = Cube3x3()
@@ -160,6 +183,7 @@ def solve_edges(cube: Cube) -> list[str]:
     target_color_set = {front_color, right_color}
     while not is_main_edge_solved(cube, reference_edges):
 
+
         # take care of flipped edge pieces - should only occur once 
         if any(l:=[
             cube_matrix[Face.FRONT.value][row, -1] == right_color and 
@@ -168,12 +192,15 @@ def solve_edges(cube: Cube) -> list[str]:
         ]):
             target_layers = [i+2 for i in range(len(l)) if l[i]]
             for layer in target_layers:
-                turn_both(cube, reference_edges, 'U', 1, layer, 1, moves=moves)
+                cube.turn('U', 1, layer, 1, moves)
             parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
             for layer in target_layers:
-                turn_both(cube, reference_edges, 'U', -1, layer, 1, moves=moves)
+                cube.turn('U', -1, layer, 1, moves)
+
 
         # keep turning to find empty slots to place things in
+        oriented_layers = []
+        nonoriented_layers = []
         for _ in range(3):
             cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
             reference_edges.turn('U', 1, 2, 1)
@@ -189,12 +216,48 @@ def solve_edges(cube: Cube) -> list[str]:
                         parse_both(cube, reference_edges, "R' D R", moves=moves)
                         break
 
+            # determine which pieces are in the proper position
+            oriented_layers.append(get_oriented_pieces_in_main_edge(cube, front_color, right_color))
+            nonoriented_layers.append(get_unoriented_pieces_in_main_edge(cube, front_color, right_color))
+
         # at this point, we need to place everything we found into the main edge 
+     
+
+        # put the cube back to normal position
+        cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
+        reference_edges.turn('U', 1, 2, 1)
+        
+        # insert all possible edge pieces
+        for slot in range(3):
+            for layer in oriented_layers[slot]:
+                cube.turn('U', slot+1, layer, 1, moves)
+        parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
+        for slot in range(3):
+            for layer in nonoriented_layers[slot]:
+                cube.turn('U', slot+1, layer, 1, moves)
+
+
+        # put the edge in the top
+        parse_both(cube, reference_edges, "R U R'", moves=moves)
+
+        # get the centers back to normal 
+        for slot in range(3):
+            for layer in oriented_layers[slot]:
+                cube.turn('U', -slot-1, layer, 1, moves)
+            for layer in nonoriented_layers[slot]:
+                cube.turn('U', -slot-1, layer, 1, moves)
+
+        # put the edge back 
+        parse_both(cube, reference_edges, "R U' R'", moves=moves)
+        front_color, right_color = right_color, front_color
+
+
         # step 1: determine which ones are oriented correctly, insert them
         # step 2: determine which ones are not oriented correctly, flip the edge and then insert them
         # step 3: swap with a top piece 
         # step 4: recover centers 
         # step 5: put the edge back 
+    return moves
 
 if __name__ == "__main__":
     cube = Cube.parse_args()
@@ -207,3 +270,4 @@ if __name__ == "__main__":
     print(cube)
     print(f"Time: {end - start :.2f}")
     print(solve_edges(cube))
+    print(cube)
