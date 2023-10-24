@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, TYPE_CHECKING
+import time
+from typing import Callable, TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from pycubing.cube import Cube
@@ -22,6 +23,13 @@ class SolvePipeline:
                 print(f"{func.__name__}: ")
                 print(cube)
         return clean_moves(moves)
+
+def debug_print(cube: Cube, prompt: str, reference: Optional[Cube] = None) -> None:
+    print(f"{prompt}:")
+    print(cube)
+    if reference:
+        print(reference)
+    time.sleep(0.5)
 
 def get_move(side: str, dist: int, layer: int = 1, width: int = 1, N: int = 1) -> list[str]:
 
