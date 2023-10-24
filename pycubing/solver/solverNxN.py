@@ -181,17 +181,21 @@ def solve_edges(cube: Cube) -> list[str]:
             for edge in [(0, cube.N // 2), (cube.N // 2, 0), (cube.N // 2, -1), (-1, cube.N // 2)]:
                 ref_matrix[face.value][*map(lambda x: min(x, 1), edge)] = cube_matrix[face.value][*edge]
 
-    # taking one edge and solving it 
+     
     moves = []
+    # solve for first 8 egdes
     for i in range(8):
+
+        # set constants for dealing with thingys
         target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
         front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
         target_color_set = {front_color, right_color}
         adjust_face = Face.TOP if i < 4 else Face.BOTTOM
         sub_move = "R U' R'" if i < 4 else "R' D R" 
         search_move = "U" if i < 4 else "D"
-        while not is_main_edge_solved(cube, reference_edges):
 
+        # take one edge and solve it
+        while not is_main_edge_solved(cube, reference_edges):
 
             # take care of flipped edge pieces - should only occur once 
             if any(l:=[
@@ -206,9 +210,6 @@ def solve_edges(cube: Cube) -> list[str]:
                 right_color, front_color = front_color, right_color
                 for layer in target_layers:
                     cube.turn('U', -1, layer, 1, moves)
-
-            #debug_print(cube, "orienting")
-
 
             # keep turning to find empty slots to place things in
             oriented_layers = []
@@ -232,10 +233,7 @@ def solve_edges(cube: Cube) -> list[str]:
                 oriented_layers.append(get_oriented_pieces_in_main_edge(cube, front_color, right_color))
                 nonoriented_layers.append(get_unoriented_pieces_in_main_edge(cube, front_color, right_color))
 
-            # at this point, we need to place everything we found into the main edge 
-            #debug_print(cube, "filled sides")
-
-            # put the cube back to normal position
+            # put the cube back to main edge
             cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
             reference_edges.turn('U', 1, 2, 1)
             
@@ -247,7 +245,6 @@ def solve_edges(cube: Cube) -> list[str]:
             for slot in range(3):
                 for layer in nonoriented_layers[slot]:
                     cube.turn('U', slot+1, layer, 1, moves)
-
 
             # put the edge in the top
             while is_front_edge_solved(cube, adjust_face):
