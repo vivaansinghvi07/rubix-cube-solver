@@ -1,11 +1,14 @@
 import sys
 from typing import Literal
-import numpy as np
 from time import perf_counter, sleep
 
+import numpy as np
+
+from pycubing.enums import Color, Face
 from pycubing.utils import debug_print
-from pycubing.enums import Face, Color
 from pycubing.cube import Cube, Cube3x3
+
+FLIPPER_ALG = "R U R' F R' F' R"
 
 def solve_centers(cube: Cube) -> list[str]:
     """
@@ -69,16 +72,13 @@ def solve_centers(cube: Cube) -> list[str]:
                         cube.turn('L', slice_dist, layer2, 1, moves)
                         cube.turn(adjust_layer, -adjust_dist, 1, 1, moves)
 
-                        # print(cube, flush=True)
-                        # sleep(0.005)
-
         solved_colors.add(target_color)
                         
     return moves
 
 def solve_edges(cube: Cube) -> list[str]:
     """
-    for edges do the following algorithm:
+    for 8 edges do the following algorithm:
       take an edge. begin looping until solved.
         find pieces of the edge on the side. insert pieces and swap with top
         swap back down with unused edges
@@ -87,13 +87,23 @@ def solve_edges(cube: Cube) -> list[str]:
         find pieces of the edge on the bottom and slot it into the side
         insert pieces and swap with top
       move on to next edge by making sure solved edge on top and moving on 
-    then worry about the next stuff
+    
+    for last 4 edges do the following:
+      choose an edge, begin looping until solved.
+        find pieces of the edge that lay on the bottom of the edge 
+          orient them properly and put them in the main, then do flipper algorithm
+        when bottom solved, continue the process with the top edges. 
+        after each insert, 
     """
 
     def parse_both(cube: Cube, ref: Cube3x3, prompt: str, moves: list[str]) -> None:
         """ Turns both the cube and the reference """
         cube.parse(prompt, output_movelist=moves)
         ref.parse(prompt)
+
+    def turn_flat_middle(cube: Cube, ref: Cube3x3, dist: int, moves: list[str]) -> None:
+        cube.turn('U', dist, cube.N - 1, cube.N - 2, moves)
+        reference_edges.turn('U', dist, 2, 1)
 
     def is_main_edge_solved(cube: Cube, reference_edges: Cube3x3) -> bool:
         """ Determines if the edge between Front and Right is solved. """
@@ -145,6 +155,7 @@ def solve_edges(cube: Cube) -> list[str]:
         Returns the well-oriented pieces in the main edge. 
         Ordered from top to bottom.
         """
+        cube_matrix = cube.get_matrix()
         return [
             i + 1 for i in range(1, cube.N-1)
             if (cube_matrix[Face.FRONT.value][i, -1] == front_color and 
@@ -156,6 +167,7 @@ def solve_edges(cube: Cube) -> list[str]:
         Returns the well-oriented pieces in the main edge. 
         Ordered from top to bottom.
         """
+        cube_matrix = cube.get_matrix()
         return [
             i + 1 for i in range(1, cube.N-1)
             if (cube_matrix[Face.FRONT.value][i, -1] == right_color and 
@@ -172,6 +184,16 @@ def solve_edges(cube: Cube) -> list[str]:
             for i in range(1, cube.N - 1)
         ])) == 1 
 
+    def fix_unoriented_pieces(cube: Cube, reference_edges: Cube3x3, target_layers: list[int], moves: list[str]) -> None:
+        """
+        Fixes edges pieces that are oriented the wrong way
+        """
+        for layer in target_layers:
+            cube.turn('U', 1, layer, 1, moves)
+        parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+        for layer in target_layers:
+            cube.turn('U', -1, layer, 1, moves)
+
     # generate edges to compare the cube to 
     reference_edges = Cube3x3()
     cube_matrix = cube.get_matrix()
@@ -180,10 +202,10 @@ def solve_edges(cube: Cube) -> list[str]:
         for face in list(Face):
             for edge in [(0, cube.N // 2), (cube.N // 2, 0), (cube.N // 2, -1), (-1, cube.N // 2)]:
                 ref_matrix[face.value][*map(lambda x: min(x, 1), edge)] = cube_matrix[face.value][*edge]
-
      
-    moves = []
     # solve for first 8 egdes
+    moves = []
+    fix_center_moves = [0] * (cube.N-2)
     for i in range(8):
 
         # set constants for dealing with thingys
@@ -194,29 +216,19 @@ def solve_edges(cube: Cube) -> list[str]:
         sub_move = "R U' R'" if i < 4 else "R' D R" 
         search_move = "U" if i < 4 else "D"
 
+        # take care of flipped edge pieces - should only occur once 
+        if target_layers := get_unoriented_pieces_in_main_edge(cube, front_color, right_color):
+            fix_unoriented_pieces(cube, reference_edges, target_layers, moves)
+            right_color, front_color = front_color, right_color
+
         # take one edge and solve it
         while not is_main_edge_solved(cube, reference_edges):
 
-            # take care of flipped edge pieces - should only occur once 
-            if any(l:=[
-                cube_matrix[Face.FRONT.value][row, -1] == right_color and 
-                cube_matrix[Face.RIGHT.value][row, 0] == front_color
-                for row in range(1, cube.N-1)
-            ]):
-                target_layers = [i+2 for i in range(len(l)) if l[i]]
-                for layer in target_layers:
-                    cube.turn('U', 1, layer, 1, moves)
-                parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
-                right_color, front_color = front_color, right_color
-                for layer in target_layers:
-                    cube.turn('U', -1, layer, 1, moves)
-
             # keep turning to find empty slots to place things in
             oriented_layers = []
-            nonoriented_layers = []
+            unoriented_layers = []
             for _ in range(3):
-                cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
-                reference_edges.turn('U', 1, 2, 1)
+                turn_flat_middle(cube, reference_edges, 1, moves)
                 
                 # insert a candidate on the top or bottom into the slot
                 if not any_piece_in_main_edge(cube, target_color_set):
@@ -231,45 +243,94 @@ def solve_edges(cube: Cube) -> list[str]:
 
                 # determine which pieces are in the proper position
                 oriented_layers.append(get_oriented_pieces_in_main_edge(cube, front_color, right_color))
-                nonoriented_layers.append(get_unoriented_pieces_in_main_edge(cube, front_color, right_color))
+                unoriented_layers.append(get_unoriented_pieces_in_main_edge(cube, front_color, right_color))
 
             # put the cube back to main edge
-            cube.turn('U', 1, cube.N - 1, cube.N - 2, moves)
-            reference_edges.turn('U', 1, 2, 1)
+            turn_flat_middle(cube, reference_edges, 1, moves)
             
             # insert all possible edge pieces
             for slot in range(3):
                 for layer in oriented_layers[slot]:
                     cube.turn('U', slot+1, layer, 1, moves)
-            parse_both(cube, reference_edges, "R U R' F R' F' R", moves)
+            parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+            front_color, right_color = right_color, front_color
             for slot in range(3):
-                for layer in nonoriented_layers[slot]:
+                for layer in unoriented_layers[slot]:
                     cube.turn('U', slot+1, layer, 1, moves)
-
-            # put the edge in the top
-            while is_front_edge_solved(cube, adjust_face):
-                parse_both(cube, reference_edges, search_move, moves)
-            parse_both(cube, reference_edges, sub_move, moves)
 
             # get the centers back to normal 
             for slot in range(3):
-                for layer in oriented_layers[slot]:
-                    cube.turn('U', -slot-1, layer, 1, moves)
-                for layer in nonoriented_layers[slot]:
-                    cube.turn('U', -slot-1, layer, 1, moves)
+                for layer in oriented_layers[slot] + unoriented_layers[slot]:
+                    fix_center_moves[layer-2] -= slot + 1
 
-            # put the edge back 
-            while not set(reference_edges.get_edge_between(Face.FRONT, adjust_face)["c2f"]) == target_color_set:
-                parse_both(cube, reference_edges, search_move, moves)
-            
-            parse_both(cube, reference_edges, sub_move, moves=moves)
-            front_color, right_color = right_color, front_color
-
+        # turn top/bottom face until we can insert the solved edge
         while is_front_edge_solved(cube, adjust_face):
             parse_both(cube, reference_edges, search_move, moves)
         parse_both(cube, reference_edges, sub_move, moves)
 
-        #debug_print(cube, f"completed edge {i+1}")
+    # fix the centers ? 
+    for layer in range(cube.N - 2):
+        cube.turn('U', fix_center_moves[layer], layer + 2, 1, moves)
+
+    # do the last four edges, somehow
+    for _ in range(2):
+
+        target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
+        front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
+        target_color_set = {front_color, right_color}
+
+        # take care of flipped edge pieces - should only occur once 
+        if target_layers := get_unoriented_pieces_in_main_edge(cube, front_color, right_color):
+            fix_unoriented_pieces(cube, reference_edges, target_layers, moves)
+            right_color, front_color = front_color, right_color
+    
+        # should only happen once, putting this here in case 
+        while not is_main_edge_solved(cube, reference_edges):
+            
+            # determine where the pieces are 
+            oriented_layers, unoriented_layers = [], []
+            for slot in range(3):
+                turn_flat_middle(cube, reference_edges, 1, moves)
+                oriented_layers[slot] = get_oriented_pieces_in_main_edge(cube, front_color, right_color)
+                unoriented_layers[slot] = get_unoriented_pieces_in_main_edge(cube, front_color, right_color)
+
+
+
+            # algo: insert everything in the bottom, then undo, then turn, insert everything into bottom again, 
+            # insert everything in the top half
+            for slot in range(3):
+
+                # insert each badly oriented edge 
+                for layer in unoriented_layers:
+                    cube.turn('U', -slot-1, layer, 1, moves)
+                turn_flat_middle(cube, reference_edges, slot, moves)
+                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+
+                
+
+                # insert the ones properly
+                for layer in oriented_layers:
+                    if layer <= cube.N // 2:
+                        cube.turn('U', slot+1, layer, 1, moves)
+
+                # flip all the other edges to allow inserting in the top layer only
+                for slot in range(3):
+                    if not is_main_edge_solved(cube, reference_edges):
+                        turn_flat_middle(cube, reference_edges, 1, moves)
+                        parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+                turn_flat_middle(cube, reference_edges, 1, moves)
+    
+                # insert the ones not properly
+                for layer in unoriented_layers:
+                    if layer > cube.N // 2:
+                        cube.turn('U', slot+1, cube.N+1 - layer, 1, moves)
+
+            # fix the centers, avoiding the main one
+            parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+            right_color, front_color = front_color, right_color
+
+
+
 
     return moves
 
