@@ -1,12 +1,12 @@
 import sys
-from typing import Literal, ParamSpec
-from time import perf_counter, sleep
+from typing import Literal
+from time import perf_counter
 
 import numpy as np
 
 from pycubing.enums import Color, Face
-from pycubing.utils import debug_print
 from pycubing.cube import Cube, Cube3x3
+from pycubing.utils import SolvePipeline
 
 FLIPPER_ALG = "R U R' F R' F' R"
 
@@ -78,22 +78,11 @@ def solve_centers(cube: Cube) -> list[str]:
 
 def solve_edges(cube: Cube) -> list[str]:
     """
-    for 8 edges do the following algorithm:
-      take an edge. begin looping until solved.
-        find pieces of the edge on the side. insert pieces and swap with top
-        swap back down with unused edges
-        find pieces of the edge on the top and slot it into the side
-        insert pieces and swap with top
-        find pieces of the edge on the bottom and slot it into the side
-        insert pieces and swap with top
-      move on to next edge by making sure solved edge on top and moving on 
-    
-    for last 4 edges do the following:
-      choose an edge, begin looping until solved.
-        find pieces of the edge that lay on the bottom of the edge 
-          orient them properly and put them in the main, then do flipper algorithm
-        when bottom solved, continue the process with the top edges. 
-        after each insert, 
+    Solves the edges of any big cube.
+    For the first 8, it solves it as any human would, collecting pieces for the edge, 
+      and storing it on the top or bottom.
+    Then, for the next 3, it solves it by inserting pieces into the edge through flippers.
+    Finally, it does the parity algorithm if needed.
     """
 
     def parse_both(cube: Cube, ref: Cube3x3, prompt: str, moves: list[str]) -> None:
@@ -103,7 +92,7 @@ def solve_edges(cube: Cube) -> list[str]:
 
     def turn_flat_middle(cube: Cube, ref: Cube3x3, dist: int, moves: list[str]) -> None:
         cube.turn('U', dist, cube.N - 1, cube.N - 2, moves)
-        reference_edges.turn('U', dist, 2, 1)
+        ref.turn('U', dist, 2, 1)
 
     def is_main_edge_solved(cube: Cube, reference_edges: Cube3x3) -> bool:
         """ Determines if the edge between Front and Right is solved. """
@@ -348,6 +337,11 @@ def solve_edges(cube: Cube) -> list[str]:
         parse_both(cube, reference_edges, "U2", moves)
 
     return moves
+
+PIPELINE_NxN = SolvePipeline(
+    solve_centers,
+    solve_edges
+)
 
 if __name__ == "__main__":
     cube = Cube.parse_args()
