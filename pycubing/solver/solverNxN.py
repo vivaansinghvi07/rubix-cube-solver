@@ -273,91 +273,80 @@ def solve_edges(cube: Cube) -> list[str]:
         cube.turn('U', fix_center_moves[layer], layer + 2, 1, moves)
 
     # do the last four edges, somehow
-    for _ in range(2):
+    for _ in range(3):
 
         target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
         front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
-        target_color_set = {front_color, right_color}
 
         # take care of flipped edge pieces - should only occur once 
         if target_layers := get_unoriented_pieces_in_main_edge(cube, front_color, right_color):
             fix_unoriented_pieces(cube, reference_edges, target_layers, moves)
             right_color, front_color = front_color, right_color
     
-        # should only happen once, putting this here in case 
-        while not is_main_edge_solved(cube, reference_edges):
-            
-            # determine where the pieces are 
-            oriented_layers, unoriented_layers = [None] * 3, [None] * 3
-            for slot in range(3):
-                turn_flat_middle(cube, reference_edges, 1, moves)
-                oriented_layers[slot] = get_oriented_pieces_in_main_edge(cube, front_color, right_color)
-                unoriented_layers[slot] = get_unoriented_pieces_in_main_edge(cube, front_color, right_color)
-            turn_flat_middle(cube, reference_edges, 1, moves)
+        # perform loop twice to take care of top and bottom part of edge
+        for _ in range(2):
 
-            debug_print(cube, "starting")
+            # check for top half of edge being solved
+            while not all([
+                cube_matrix[Face.FRONT.value][i, -1] == front_color and 
+                cube_matrix[Face.RIGHT.value][i, 0] == right_color
+                for i in range(1, cube.N // 2)
+            ]):
 
-            # algo: insert everything in the bottom, then undo, then turn, insert everything into bottom again, 
-            # insert everything in the top half
-            for slot in range(3):
-
-                # insert each badly oriented edge on the top
-                top_unoriented = [*filter(lambda x: x > cube.N // 2, unoriented_layers[slot])]
-                for layer in top_unoriented:
-                    cube.turn('U', -slot-1, cube.N+1 - layer, 1, moves)
-                turn_flat_middle(cube, reference_edges, slot+1, moves)
-                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
-                turn_flat_middle(cube, reference_edges, -slot-1, moves)
-                for layer in top_unoriented:
-                    cube.turn('U', slot+1, cube.N+1 - layer, 1, moves)
-
-            # flip everything to insert the top well oriented edges
-            for _ in range(3): 
-                turn_flat_middle(cube, reference_edges, 1, moves)
-                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
-            turn_flat_middle(cube, reference_edges, 1, moves)
-
-            for slot in range(3): 
-                top_oriented = [*filter(lambda x: x <= cube.N // 2, oriented_layers[slot])]
-                for layer in top_oriented:
-                    cube.turn('U', -slot-1, layer, 1, moves)
-                turn_flat_middle(cube, reference_edges, slot+1, moves)
-                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
-                turn_flat_middle(cube, reference_edges, -slot-1, moves)
-                for layer in top_oriented:
-                    cube.turn('U', slot+1, layer, 1, moves)
-
-            debug_print(cube, "topside done")
-
-            # at this point, the top part of the edge should be completely solved.
-            # let's repeat the process for the bottom.
-
-            for slot in range(3):
-                bottom_oriented = [*filter(lambda x: x > cube.N // 2, oriented_layers[slot])]
-                for layer in bottom_oriented:
-                    cube.turn('U', -slot-1, layer, 1, moves)
-                turn_flat_middle(cube, reference_edges, slot+1, moves)
-                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
-                turn_flat_middle(cube, reference_edges, -slot-1, moves)
-                for layer in bottom_oriented:
-                    cube.turn('U', slot+1, layer, 1, moves)
-
-            for _ in range(3):
-                turn_flat_middle(cube, reference_edges, 1, moves)
-                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+                # find all the pieces we can insert
+                unoriented_layers = [None] * 3
+                for slot in range(3):
+                    turn_flat_middle(cube, reference_edges, 1, moves)
+                    unoriented_layers[slot] = get_unoriented_pieces_in_main_edge(cube, front_color, right_color)
                 turn_flat_middle(cube, reference_edges, 1, moves)
 
-            for slot in range(3):
-                bottom_unoriented = [*filter(lambda x: x <= cube.N // 2, unoriented_layers[slot])]
-                for layer in bottom_unoriented:
-                    cube.turn('U', -slot-1, cube.N+1 - layer, 1, moves)
-                turn_flat_middle(cube, reference_edges, slot+1, moves)
-                parse_both(cube, reference_edges, FLIPPER_ALG, moves)
-                turn_flat_middle(cube, reference_edges, -slot-1, moves)
-                for layer in bottom_unoriented:
-                    cube.turn('U', slot+1, cube.N+1 - layer, 1, moves)
+                # fill the edges from each other piece into the main one
+                for slot in range(3):
+                    top_unoriented = [*filter(lambda x: x > cube.N // 2, unoriented_layers[slot])]
+                    for layer in top_unoriented:
+                        cube.turn('U', -slot-1, cube.N+1 - layer, 1, moves)
+                    turn_flat_middle(cube, reference_edges, slot+1, moves)
+                    parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+                    turn_flat_middle(cube, reference_edges, -slot-1, moves)
+                    for layer in top_unoriented:
+                        cube.turn('U', slot+1, cube.N+1 - layer, 1, moves)
 
-            debug_print(cube, "thing")
+            # flip the main edge to move on to the other half 
+            parse_both(cube, reference_edges, FLIPPER_ALG, moves)
+            right_color, front_color = front_color, right_color
+
+        # cycle edge somewhere else
+        turn_flat_middle(cube, reference_edges, 1, moves)
+
+    # solve parity in the last edge
+    target_edge = reference_edges.get_edge_between(Face.FRONT, Face.RIGHT)
+    front_color, right_color = target_edge["f2c"][Face.FRONT], target_edge["f2c"][Face.RIGHT]
+    parity_edges = get_unoriented_pieces_in_main_edge(cube, front_color, right_color)
+    num_parity_edges = len(parity_edges) // 2
+    parse_both(cube, reference_edges, "F'", moves)
+
+    # declare some helper functions just for parity
+    def turn_layers(cube: Cube, layers: list[int], side: str, dist: int, moves: list[str]) -> None:
+        for layer in layers:
+            cube.turn(side, dist, layer, 1, moves)
+
+    # parity algorithm
+    turn_layers(cube, parity_edges[num_parity_edges:], "L", -1, moves)
+    parse_both(cube, reference_edges, "U2 x", moves)
+    for dist in [-1, -1, 1]:
+        turn_layers(cube, parity_edges[num_parity_edges:], "L", dist, moves)
+        parse_both(cube, reference_edges, "U2", moves)
+    turn_layers(cube, parity_edges[:num_parity_edges], "L", 1, moves)
+    parse_both(cube, reference_edges, "U2", moves)
+    for layer in range(2, cube.N):
+        if layer not in parity_edges[:num_parity_edges]:
+            cube.turn("L", 1, layer, 1, moves)
+    parse_both(cube, reference_edges, "U2", moves)
+    reference_edges.turn("L", 1, 2, 1)
+    for dist in [-1, 1, 1]:
+        turn_layers(cube, parity_edges[num_parity_edges:], "L", dist, moves)
+        parse_both(cube, reference_edges, "U2", moves)
+
     return moves
 
 if __name__ == "__main__":
@@ -370,5 +359,10 @@ if __name__ == "__main__":
         print(moves)
     print(cube)
     print(f"Time: {end - start :.2f}")
-    print(solve_edges(cube))
+    start = perf_counter()
+    moves = solve_edges(cube)
+    end = perf_counter()
+    if '-p' in sys.argv or '--print-scramble' in sys.argv:
+        print(moves)
     print(cube)
+    print(f"Time: {end - start :.2f}")
