@@ -1,13 +1,12 @@
 from __future__ import annotations
-
 import re
 import time
-from typing import Callable, TYPE_CHECKING, Optional
+from typing import Callable, Optional, TYPE_CHECKING
+
+from pycubing.error import InvalidTurnException
 
 if TYPE_CHECKING:
     from pycubing.cube import Cube
-
-from pycubing.error import InvalidTurnException
 
 class SolvePipeline:
     def __init__(self, *funcs: Callable[[Cube], list[str]], debug: bool = False):
