@@ -225,8 +225,10 @@ def solve_edges(cube: Cube) -> list[str]:
                         parse_both(cube, reference_edges, 'U D', moves=moves)
                         if any_piece_in_top_edge(cube, target_color_set):
                             parse_both(cube, reference_edges, "R U' R'", moves=moves)
+                            break
                         elif any_piece_in_bottom_edge(cube, target_color_set):
                             parse_both(cube, reference_edges, "R' D R", moves=moves)
+                            break
 
                 # determine which pieces are in the proper position
                 oriented_layers.append(get_oriented_pieces_in_main_edge(cube, front_color, right_color))
