@@ -163,15 +163,20 @@ def solve_edges(cube: Cube) -> list[str]:
             cube_matrix[Face.RIGHT.value][i, 0] == front_color)
         ]
     
-    def is_front_edge_solved(cube: Cube, border: Literal[Face.BOTTOM, Face.TOP]) -> bool:  
+    def is_front_edge_solved(cube: Cube, ref: Cube3x3, border: Literal[Face.BOTTOM, Face.TOP]) -> bool:  
         """
         Determines if the Front Top or Bottom edge is in a solved state
         """
         cube_matrix = cube.get_matrix()
+        ref_matrix = ref.get_matrix()
+        front_index = 0 if border == Face.TOP else -1
         return len(set([
-            (cube_matrix[Face.FRONT.value][0 if border == Face.TOP else -1, i], cube_matrix[border.value][-1, i])
+            (cube_matrix[Face.FRONT.value][front_index, i], cube_matrix[border.value][-1, i])
             for i in range(1, cube.N - 1)
-        ])) == 1 
+        ])) == 1 and (
+            cube_matrix[Face.FRONT.value][front_index, 1] == ref_matrix[Face.FRONT.value][front_index, 1] and
+            cube_matrix[border.value][-1, 1] == ref_matrix[border.value][-1, 1]
+        )
 
     def fix_unoriented_pieces(cube: Cube, reference_edges: Cube3x3, target_layers: list[int], moves: list[str]) -> None:
         """
@@ -255,7 +260,7 @@ def solve_edges(cube: Cube) -> list[str]:
         # turn top/bottom face until we can insert the solved edge
         for _ in range(4):
             parse_both(cube, reference_edges, search_move, moves)
-            if not is_front_edge_solved(cube, adjust_face):
+            if not is_front_edge_solved(cube, reference_edges, adjust_face):
                 parse_both(cube, reference_edges, sub_move, moves)
 
 
