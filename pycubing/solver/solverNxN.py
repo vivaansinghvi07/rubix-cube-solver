@@ -169,7 +169,7 @@ def solve_edges(cube: Cube) -> list[str]:
         """
         cube_matrix = cube.get_matrix()
         return len(set([
-            (cube_matrix[Face.FRONT.value][0, i], cube_matrix[border.value][-1, i])
+            (cube_matrix[Face.FRONT.value][0 if border == Face.TOP else -1, i], cube_matrix[border.value][-1, i])
             for i in range(1, cube.N - 1)
         ])) == 1 
 
@@ -253,9 +253,11 @@ def solve_edges(cube: Cube) -> list[str]:
                     fix_center_moves[layer-2] -= slot + 1
 
         # turn top/bottom face until we can insert the solved edge
-        while is_front_edge_solved(cube, adjust_face):
+        for _ in range(4):
             parse_both(cube, reference_edges, search_move, moves)
-        parse_both(cube, reference_edges, sub_move, moves)
+            if not is_front_edge_solved(cube, adjust_face):
+                parse_both(cube, reference_edges, sub_move, moves)
+
 
     # fix the centers ? 
     for layer in range(cube.N - 2):

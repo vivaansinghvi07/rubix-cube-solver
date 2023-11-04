@@ -11,8 +11,8 @@ from typing import Optional, Union
 import numpy as np
 from pynterface import Background
 
-from pycubing.utils import get_move
 from pycubing.enums import Color, Face
+from pycubing.utils import get_move, get_letter_dist_layer_width
 
 class Cube():
 
@@ -216,30 +216,7 @@ class Cube():
         """
         move_list = moves.split()
         for m in filter(lambda x: bool(x.strip()), move_list):
-            dist = width = layer = 1
-            letter = re.search(r'[rfdublRFDUBLxyz]', m).group()
-            if len(m) != 1:
-                if m[-1] == '2':
-                    dist = 2
-                elif m[-1] == "'":
-                    dist = -1
-                if (nums:=re.match(r'[1-9][0-9]*', m)):
-                    layer = int(nums.group())
-                elif 'w' in m:
-                    layer = 2
-                if 'w' in m: 
-                    width = layer
-            if letter.islower():
-                layer = width = 2
-            if letter in 'xyz':
-                letter = {
-                    'x': 'R', 'y' : 'U', 'z': 'F' 
-                }[letter]
-                match m[-1]:
-                    case "'": dist = -1
-                    case "2": dist = 2
-                    case _: dist = 1
-                width = layer = self.N
+            letter, dist, layer, width = get_letter_dist_layer_width(m, self.N)
             self.turn(letter.upper(), dist, layer, width, output_movelist)
         
     def turn(self, move: str, dist: int, layer: int = 1, width: int = 1, movelist: Optional[list[str]] = None) -> None:

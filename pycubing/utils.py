@@ -142,7 +142,79 @@ def reverse_moves(moves: list[str]) -> list[str]:
         for move in reversed(moves)
     ]
 
-   
+def get_letter_dist_layer_width(m: str, N: int) -> tuple[str, int, int, int]:
+    """
+    Gets the attributes of a move (side, dist, layer, width)
+    """
+
+    dist = width = layer = 1
+    letter = re.search(r'[rfdublRFDUBLxyz]', m).group()
+    if len(m) != 1:
+        if m[-1] == '2':
+            dist = 2
+        elif m[-1] == "'":
+            dist = -1
+        if (nums:=re.match(r'[1-9][0-9]*', m)):
+            layer = int(nums.group())
+        elif 'w' in m:
+            layer = 2
+        if 'w' in m: 
+            width = layer
+    if letter.islower():
+        layer = width = 2
+    if letter in 'xyz':
+        letter = {
+            'x': 'R', 'y' : 'U', 'z': 'F' 
+        }[letter]
+        match m[-1]:
+            case "'": dist = -1
+            case "2": dist = 2
+            case _: dist = 1
+        width = layer = N
+    return letter, dist, layer, width
+     
+def convert_3x3_moves_to_NxN(moves: list[str], N: int) -> list[str]:
+    """
+    Converts a list of moves designed for a 3x3 to a list of moves for a big cube.
+    """ 
+    new_moves = []
+    for m in moves:
+        letter, dist, layer, width = get_letter_dist_layer_width(m, 3)
+        if layer == 1:
+            new_moves.append(m)
+            continue
+        new_layer = new_width = None
+        if layer == 2:
+            new_width = N - 3 + width
+            new_layer = N - 1
+        else:
+            if width == 1:
+                new_width = 1
+            else:
+                new_width = N - 3 + width 
+            new_layer = N
+        new_moves.extend(get_move(letter, dist, new_layer, new_width, N))
+    return new_moves
+
+def convert_3x3_moves_to_2x2(moves: list[str]) -> list[str]:
+    new_moves = []
+    for m in moves:
+        letter, dist, layer, width = get_letter_dist_layer_width(m, 3)
+        if layer == 1 or width == 1 and layer == 2:
+            new_moves.append(m)
+            continue
+        new_layer = new_width = None
+        if layer == 2:
+            new_layer = new_width = 1
+        else:
+            if width == 3:
+                new_width = 2 
+            else:
+                new_width = 1
+            new_layer = 2
+        new_moves.extend(get_move(letter, dist, new_layer, new_width, 2))
+    return new_moves
+
 if __name__ == "__main__":
     moves = ["R", "U", "R'", "U'", "F", "D", "F'"]
     print(f'{reverse_moves(moves) = }')
