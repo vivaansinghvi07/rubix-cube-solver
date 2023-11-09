@@ -13,6 +13,7 @@ FLIPPER_ALG = "R U R' F R' F' R"
 def solve_centers(cube: Cube) -> list[str]:
     """
     Uses commutators to solve every center in a big cube. 
+    Huge perf bottleneck - O(n^2) time complexity.
     """
     reference_centers = Cube(side_length=1)
     ref_matrix = reference_centers.get_matrix()
@@ -83,6 +84,7 @@ def solve_edges(cube: Cube) -> list[str]:
       and storing it on the top or bottom.
     Then, for the next 3, it solves it by inserting pieces into the edge through flippers.
     Finally, it does the parity algorithm if needed.
+    I think this is O(n) unless I just suck at programming
     """
 
     def parse_both(cube: Cube, ref: Cube3x3, prompt: str, moves: list[str]) -> None:
@@ -262,7 +264,6 @@ def solve_edges(cube: Cube) -> list[str]:
             parse_both(cube, reference_edges, search_move, moves)
             if not is_front_edge_solved(cube, reference_edges, adjust_face):
                 parse_both(cube, reference_edges, sub_move, moves)
-
 
     # fix the centers ? 
     for layer in range(cube.N - 2):
