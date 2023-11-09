@@ -38,4 +38,3 @@ if __name__ == "__main__":
     moves += orient_top_until_solve(cube)
     print(moves)
     print(cube)
-
