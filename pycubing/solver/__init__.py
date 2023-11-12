@@ -26,6 +26,5 @@ def solve(cube: Cube, mutate_original: bool = False) -> list[str]:
             cube_3x3 = cube.get_3x3()
             moves_to_solve = convert_3x3_moves_to_NxN(PIPELINE_3x3(cube_3x3), cube.N)
             if mutate_original:
-                print(moves_to_solve)
                 cube.parse(" ".join(moves_to_solve))
             return moves_to_3x3 + moves_to_solve
