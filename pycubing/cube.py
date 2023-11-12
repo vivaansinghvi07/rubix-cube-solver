@@ -1,15 +1,15 @@
 from __future__ import annotations
-import re
+import os
 import json
 import random
 import argparse
 from math import sqrt
+from time import sleep
 from pathlib import Path
-from copy import deepcopy
 from typing import Optional, Union
 
 import numpy as np
-from pynterface import Background
+from pynterface import Background, clear_window
 
 from pycubing.enums import Color, Face
 from pycubing.utils import get_move, get_letter_dist_layer_width
@@ -72,14 +72,15 @@ class Cube():
         parser.add_argument("-r", "--random-scramble", help="initialize the cube with a random scramble", action="store_true")
         parser.add_argument("-c", "--custom-scramble", help="initialize the cube with your own scramble", type=str)
         parser.add_argument("-p", "--print-scramble", help="print the scramble of the cube", action="store_true")
+        parser.add_argument("-d", "--display-cube", help="displays the cube at every turn", action="store_true")
         args = parser.parse_args()
         
         if not args.side_length: 
             args.side_length = random.randint(2, 7)
         if args.side_length == 3:
-            cube = Cube3x3()
+            cube = Cube3x3(display_cube=args.display_cube)
         else:
-            cube = Cube(side_length=args.side_length)
+            cube = Cube(side_length=args.side_length, display_cube=args.display_cube)
 
         if args.custom_scramble:
             cube.parse(args.custom_scramble)
@@ -119,7 +120,7 @@ class Cube():
             return Cube3x3(scramble=cube_matrix)
         return Cube(side_length=N, scramble=cube_matrix)
 
-    def __init__(self, side_length: int = 3, scramble: Optional[list[np.ndarray]] = None):
+    def __init__(self, side_length: int = 3, *, scramble: Optional[list[np.ndarray]] = None, display_cube: bool = False):
         if scramble is None:
             self._cube = [
                 np.array([[c] * side_length for _ in range(side_length)])
@@ -128,6 +129,7 @@ class Cube():
         else: 
             self._cube = scramble
         self.N = side_length
+        self.display_cube = display_cube
 
     def __str__(self):
 
@@ -194,7 +196,7 @@ class Cube():
             self.parse(scramble)
         elif self.N > 7:
             moves = []
-            for _ in range(self.N**2*2):
+            for _ in range(int(self.N**1.5*2)):
                 dist = random.randint(1, 3)
                 layer = random.randint(1, self.N)
                 width = random.randint(1, layer)
@@ -232,6 +234,9 @@ class Cube():
         move_map[move](dist, layer, width)
         if movelist is not None:
             movelist.extend(get_move(move, dist, layer, width, self.N))
+        if self.display_cube:
+            print(self, "\n" * (os.get_terminal_size().lines - self.N * 3 - 3), flush=True)
+            sleep(0.005)
         
     def __turn_right(self, dist: int, layer: int = 1, width: int = 1) -> None:
         """ 
@@ -531,8 +536,8 @@ class Cube3x3(Cube):
     are made for 3x3's
     """
 
-    def __init__(self, scramble: Optional[list[np.ndarray]] = None) -> None:
-        super().__init__(side_length=3, scramble=scramble)
+    def __init__(self, scramble: Optional[list[np.ndarray]] = None, display_cube: bool = False) -> None:
+        super().__init__(side_length=3, scramble=scramble, display_cube=display_cube)
 
     def get_center_at(self, a: Face) -> dict[str, Union[dict[Face, Color], dict[Color, Face]]]:
         return { 
