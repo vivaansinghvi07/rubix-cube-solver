@@ -134,12 +134,23 @@ class Cube():
     def __str__(self):
 
         def get_ansii(color: Color) -> str:
-            color_name = str(color).split('.')[-1]
-            match color_name:
-                case "ORANGE":
+            match color:
+                case Color.ORANGE:
                     return Background.RGB((255, 165, 0))
-                case other: 
-                    return eval(f"Background.{other}_BRIGHT")
+                case Color.RED:
+                    return Background.RED_BRIGHT
+                case Color.BLUE:
+                    return Background.BLUE_BRIGHT
+                case Color.WHITE:
+                    return Background.WHITE_BRIGHT
+                case Color.GREEN:
+                    return Background.GREEN_BRIGHT
+                case Color.YELLOW:
+                    return Background.YELLOW_BRIGHT
+                case None:
+                    return Background.BLACK_BRIGHT
+                case _:
+                    raise AttributeError(f"No ANSI code found for color '{color}'.")
 
         output = "\n "
         top_face = self._cube[Face.TOP.value]
