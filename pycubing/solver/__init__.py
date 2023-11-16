@@ -6,7 +6,6 @@ from pycubing.solver.solver2x2 import PIPELINE_2x2
 from pycubing.solver.solverNxN import PIPELINE_NxN
 from pycubing.utils import convert_3x3_moves_to_2x2, convert_3x3_moves_to_NxN
 
-# TODO: Fix the move translation from 3x3 to 2x2, as well as 3x3 to NxN
 def solve(cube: Cube, mutate_original: bool = False) -> list[str]:
     if not mutate_original:
         cube = deepcopy(cube)
