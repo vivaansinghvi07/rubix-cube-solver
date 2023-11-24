@@ -1,3 +1,5 @@
+.DS_Store
+
 # Large pickled objects
 *.pkl
 
