@@ -553,7 +553,7 @@ class ImageToCube:
 
 if __name__ == "__main__":
     translator = ImageToCube(3)
-    vidcap = cv2.VideoCapture("./../thing.mov")
+    vidcap = cv2.VideoCapture("./../media/example_video.mov")
     while (image := vidcap.read())[0]:
         translator.translate(image[1])
     cube = translator.create_cube()
