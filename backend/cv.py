@@ -1,3 +1,4 @@
+from operator import is_
 import cv2
 import numpy as np
 from enum import Enum
@@ -315,6 +316,11 @@ def get_squares_by_face(face_contours: dict[tuple[float], list[Contour]]) -> dic
             # here, we make sure key_1 is always the leftmost key for returning
             if center_of_mass_2[0] < center_of_mass_1[0]:
                 key_1, key_2 = key_2, key_1
+
+            # some guardrails to make sure we don't get results that make no sense
+            bottom_center_of_mass, right_center_of_mass = map(lambda k: np.average([get_center(np.array(cnt)) for cnt in face_contours[k]], axis=0), [key_1, key_2])
+            if not (bottom_center_of_mass[1] > right_center_of_mass[1] and right_center_of_mass[0] > bottom_center_of_mass[0]):
+                raise ComputerVisionException("Invalid faces detected.")
             return {
                 FaceLocation.BOTTOM: face_contours[key_1],
                 FaceLocation.RIGHT: face_contours[key_2]
@@ -322,8 +328,12 @@ def get_squares_by_face(face_contours: dict[tuple[float], list[Contour]]) -> dic
         
         # now we know it's the other scenario -- once again, we make sure key_1 is the top_most key
         else:
+
             if center_of_mass_2[1] < center_of_mass_1[1]:
                 key_1, key_2 = key_2, key_1
+            bottom_center_of_mass, left_center_of_mass = map(lambda k: np.average([get_center(np.array(cnt)) for cnt in face_contours[k]], axis=0), [key_2, key_1])
+            if not (bottom_center_of_mass[1] > left_center_of_mass[1] and left_center_of_mass[0] < bottom_center_of_mass[0]):
+                raise ComputerVisionException("Invalid faces detected.")
             return {
                 FaceLocation.LEFT: face_contours[key_1],
                 FaceLocation.BOTTOM: face_contours[key_2]
@@ -364,6 +374,12 @@ def get_squares_by_face(face_contours: dict[tuple[float], list[Contour]]) -> dic
         total_diff = np.average(left_left_avg - left_right_avg) + np.average(right_right_avg - right_left_avg)
         top_or_bottom_face_loc = FaceLocation.BOTTOM if total_diff > 0 else FaceLocation.TOP
         top_or_bottom_key = (set(face_contours.keys()) - {left_key, right_key}).pop()
+
+        # guardrails against stupid cases
+        is_below_left, is_below_right = (center_of_masses[top_or_bottom_key][1] > center_of_masses[left_key][1], 
+                                         center_of_masses[top_or_bottom_key][1] > center_of_masses[right_key][1])
+        if (is_below_left != is_below_right) or (is_below_left ^ (top_or_bottom_face_loc == FaceLocation.BOTTOM)):
+            raise ComputerVisionException("Something went wrong.")
 
         # construct final dict
         return {
@@ -457,7 +473,6 @@ def determine_face_colors(img: cv2.Mat, squares_by_face: dict[FaceLocation, list
 class ImageToCube:
 
     # we must spend at least these frames on a new orientation to consider it individual 
-    MIN_RUN_COUNT = 3
     ROTATION_ORDER: list[tuple[dict[FaceLocation, tuple[Face, int]]]] = [
         {FaceLocation.TOP: (Face.TOP, -1), FaceLocation.RIGHT: (Face.RIGHT, 2), FaceLocation.LEFT: (Face.FRONT, -1)},
         {FaceLocation.BOTTOM: (Face.RIGHT, 2), FaceLocation.RIGHT: (Face.BACK, 2), FaceLocation.LEFT: (Face.TOP, -1)},
@@ -467,24 +482,60 @@ class ImageToCube:
         {FaceLocation.BOTTOM: (Face.FRONT, -1), FaceLocation.LEFT: (Face.LEFT, -1), FaceLocation.RIGHT: (Face.TOP, -1)}
     ]
 
-    def __init__(self, N: int = None):
+    def __init__(self, N: int):
 
-        # store which state of ROTATION_ORDER is being looked at, and if top face is in that state
-        self.top_face_present = True
-        self.curr_state = 0
-
-        # how long in a row the state has remained the same
-        self.curr_state_run_count = 0
-        self.prev_state_run_count = 0
+        # store which state of ROTATION_ORDER is being looked at
+        self.state = 0
 
         # information about the cube
-        self.cube_guesses = [None] * 6
+        self.cube_guesses = [np.empty((N, N, 1), dtype=object) for _ in range(6)]
         self.N = N
-        self.locked_N = N is not None
     
-    def translate(self, img: cv2.Mat):  # assume the image is already in low res
+    def calculate_score(self, state: int, colors_by_face: dict[FaceLocation, list[list[Color]]]) -> float:
+        """ Calculate the score for how well a state matches given colors_by_face. """
+        
+        scores = []
+        for face_loc, (cube_face, rotation) in ImageToCube.ROTATION_ORDER[state % 6].items():
 
-        self.curr_state_run_count += 1
+            # get current guess
+            if face_loc not in colors_by_face:
+                continue
+            incoming_face_guess = ImageToCube.interpret_face_guess(cube_face, rotation, colors_by_face[face_loc])
+            overall_face_guess = self.get_guess(cube_face)
+
+            # assign scores to different scenarios 
+            running_score_total = 0
+            for i in range(self.N):
+                for j in range(self.N):
+
+                    # either square is none, | operator prevents short circuiting
+                    if (inc_none := incoming_face_guess[i, j] is None) | (ove_none := overall_face_guess[i, j] is None):  
+                        if ove_none and inc_none:
+                            running_score_total += 0.5
+                        elif ove_none:
+                            running_score_total += 0.7
+                        else:
+                            running_score_total += 0.45
+
+                    # check equality
+                    elif incoming_face_guess[i, j] == overall_face_guess[i, j]:
+                        running_score_total += 1.0
+
+            scores.append(running_score_total / (self.N * self.N))
+
+        # determine how many matched faces are there compared to how many faces were read
+        score_modifier = (len(scores) / len(colors_by_face)) * 0.2
+        return (np.average(scores) if scores else 0) + score_modifier
+
+    @staticmethod
+    def interpret_face_guess(cube_face: Face, rotation: int, current_face_guess: np.ndarray[Color]) -> np.ndarray[Color]:
+        """ Given a current_face_guess, transform it to how it would be on the cube given values for rotation and cube_face. """
+        rotated_guess = np.rot90(current_face_guess, rotation)
+        if cube_face == Face.BOTTOM:
+            return np.flip(rotated_guess, axis=1)
+        return rotated_guess
+
+    def translate(self, img: cv2.Mat):  # assume the image is already in low res
 
         # run through image processing process
         try:
@@ -492,37 +543,33 @@ class ImageToCube:
             squares_by_angle = get_squares_by_angle(cubie_contours)
             interpolated_squares = fill_empty_squares(img, squares_by_angle)
             squares_by_face = get_squares_by_face(interpolated_squares)
-            colors_by_face = determine_face_colors(img, squares_by_face)
+            colors_by_face = determine_face_colors(img, squares_by_face)  # type hint to help LSP
         except ComputerVisionException:
             return
         
-        # determine if making fresh guesses
-        current_guess_N = len(next(iter(colors_by_face.values())))
-        if not self.locked_N and (self.N is None or current_guess_N > self.N):
-            self.N = current_guess_N
-            self.cube_guesses = [None] * 6
+        # don't bother if read N is less than current N
+        if len(next(iter(colors_by_face.values()))) != self.N:
+            return
 
-        # if these two are differnet, we have moved on to a next face, or it is buggin
-        if self.top_face_present ^ (FaceLocation.TOP in colors_by_face):
-            if self.curr_state_run_count < ImageToCube.MIN_RUN_COUNT: 
-                self.curr_state -= 1
-                self.curr_state_run_count, self.prev_state_run_count = self.prev_state_run_count, self.curr_state_run_count
+        # calculate scores for each state
+        prev_state_score = self.calculate_score(self.state - 1, colors_by_face)
+        curr_state_score = self.calculate_score(self.state, colors_by_face)
+        next_state_score = self.calculate_score(self.state + 1, colors_by_face)
+
+        # determine which state we are going to be on, this can be adjusted later
+        if curr_state_score < max(prev_state_score, next_state_score):
+            if next_state_score >= prev_state_score:
+                self.state += 1
             else:
-                self.curr_state += 1
-                self.prev_state_run_count = self.curr_state_run_count
-                self.curr_state_run_count = 0
-            self.top_face_present = not self.top_face_present
-
-        # read the guess
-        for face_loc, (cube_face, rotation) in ImageToCube.ROTATION_ORDER[self.curr_state % 6].items():
+                self.state -= 1
+        
+        # go through each thing in the current state
+        for face_loc, (cube_face, rotation) in ImageToCube.ROTATION_ORDER[self.state % 6].items():
 
             # apply needed transformations to be able to add the guess
             if not face_loc in colors_by_face:
                 continue
-            current_face_guess = colors_by_face[face_loc]
-            current_face_guess = np.rot90(current_face_guess, rotation)
-            if cube_face == Face.BOTTOM:
-                current_face_guess = np.flip(current_face_guess, axis=1)
+            current_face_guess = ImageToCube.interpret_face_guess(cube_face, rotation, colors_by_face[face_loc])
 
             # incompatible N value
             try:
@@ -536,17 +583,21 @@ class ImageToCube:
             else:
                 self.cube_guesses[cube_face.value] = current_face_guess
 
+    def get_guess(self, face: Face) -> np.ndarray:
+        """ Determines the most likely setup of a face given already guessed colors. """
+        temp_face_arr = [[None] * self.N for _ in range(self.N)]
+        if self.cube_guesses[face.value] is not None:
+            for i in range(self.N):
+                for j in range(self.N):
+                    not_none_colors = [x for x in self.cube_guesses[face.value][i, j] if x is not None]
+                    temp_face_arr[i][j] = mode(not_none_colors) if not_none_colors else None
+        return np.array(temp_face_arr)
+
     def create_cube(self) -> Cube:
         """ Uses a voting method to determine the most likely cube read. """
         most_voted_guesses = [None] * 6
         for face in list(Face):
-            temp_face_arr = [[None] * 3 for _ in range(self.N)]
-            if self.cube_guesses[face.value] is not None:
-                for i in range(self.N):
-                    for j in range(self.N):
-                        not_none_colors = [x for x in self.cube_guesses[face.value][i, j] if x is not None]
-                        temp_face_arr[i][j] = mode(not_none_colors) if not_none_colors else None
-            most_voted_guesses[face.value] = np.array(temp_face_arr)
+            most_voted_guesses[face.value] = self.get_guess(face)
         if self.N == 3:
             return Cube3x3(scramble=most_voted_guesses)
         return Cube(self.N, scramble=most_voted_guesses)
