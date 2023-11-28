@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="styles.css" rel="stylesheet" />
+    <script src="src/videoCapture.js"></script>
+    <script src="src/toast.js"></script>
+
+    <!-- Font Awesome icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css"
+    />
+  </head>
+  <body>
+
+    <!-- Toast notifications -->
+    <ul class="notifications"></ul>
+
+    <div id="home-page">
+      
+    </div>
+
+    <div id="video-stream-input">
+      <canvas id="video-canvas" hidden="hidden"></canvas>
+      <video id="video-cam"></video>
+      <button onclick="startVideoReceiving();"> Submit </button>
+      <button onclick="endVideoReceiving();"> Finish </button>
+    </div>
+  </body>
+</html>

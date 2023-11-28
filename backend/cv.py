@@ -40,11 +40,15 @@ class ComputerVisionException(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
 
+def cap_img(img: cv2.Mat) -> cv2.Mat:
+    """ Caps a given image to a certain size. """
+    scale_factor = min(sqrt(MAX_IMG_AREA / (img.shape[0] * img.shape[1])), 1)
+    return cv2.resize(img, (0, 0), fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+
 def imread_capped(filename: str) -> cv2.Mat:
     """ Reads a file and returns a cv2 Image, but resizing it to meet a maximum area. """
     img = cv2.imread(filename)
-    scale_factor = min(sqrt(MAX_IMG_AREA / (img.shape[0] * img.shape[1])), 1)
-    return cv2.resize(img, (0, 0), fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+    return cap_img(img)
 
 def to_hsv(img: cv2.Mat):
     """ Wrapper function for quick conversion to HSV from BGR. """

@@ -1,0 +1,148 @@
+:root {
+  --toast-dark: #78fad1;
+  --toast-light: #ffffff;
+  --toast-success: #0abf30;
+  --toast-error: #e24d4c;
+  --toast-warning: #e9bd0c;
+  --toast-info: #3498db;
+  --toast-random: #eb43ff;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--toast-dark);
+}
+
+button {
+  height: 70px;
+  width: 400px;
+  font-size: 2em;
+}
+
+/* 
+* SECTION FOR TOAST 
+* https://dev.to/arafat4693/how-to-create-a-toast-notification-in-javascript-261d
+*/
+.notifications {
+  position: fixed;
+  top: 30px;
+  right: 20px;
+}
+.notifications :where(.toast, .column) {
+  display: flex;
+  align-items: center;
+}
+.notifications .toast {
+  width: 400px;
+  position: relative;
+  overflow: hidden;
+  list-style: none;
+  border-radius: 4px;
+  padding: 16px 17px;
+  margin-bottom: 10px;
+  background: var(--toast-light);
+  justify-content: space-between;
+  animation: show_toast 0.3s ease forwards;
+}
+@keyframes show_toast {
+  0% {
+    transform: translateX(100%);
+  }
+  40% {
+    transform: translateX(-5%);
+  }
+  80% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-10px);
+  }
+}
+.notifications .toast.hide {
+  animation: hide_toast 0.3s ease forwards;
+}
+@keyframes hide_toast {
+  0% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(0%);
+  }
+  80% {
+    transform: translateX(-5%);
+  }
+  100% {
+    transform: translateX(calc(100% + 20px));
+  }
+}
+.toast::before {
+  position: absolute;
+  content: "";
+  height: 3px;
+  width: 100%;
+  bottom: 0px;
+  left: 0px;
+  animation: progress 5s linear forwards;
+}
+@keyframes progress {
+  100% {
+    width: 0%;
+  }
+}
+.toast.success::before {
+  background: var(--toast-success);
+}
+.toast.error::before {
+  background: var(--toast-error);
+}
+.toast.warning::before {
+  background: var(--toast-warning);
+}
+.toast.info::before {
+  background: var(--toast-info);
+}
+.toast.random::before {
+  background: var(--toast-random);
+}
+.toast .column i {
+  font-size: 1.75rem;
+}
+.toast.success .column i {
+  color: var(--toast-success);
+}
+.toast.error .column i {
+  color: var(--toast-error);
+}
+.toast.warning .column i {
+  color: var(--toast-warning);
+}
+.toast.info .column i {
+  color: var(--toast-info);
+}
+.toast.random .column i {
+  color: var(--toast-random);
+}
+.toast .column span {
+  font-size: 1.07rem;
+  margin-left: 12px;
+}
+.toast i:last-child {
+  color: #aeb0d7;
+  cursor: pointer;
+}
+.toast i:last-child:hover {
+  color: var(--toast-dark);
+}
+@media screen and (max-width: 530px) {
+  .notifications {
+    width: 95%;
+  }
+  .notifications .toast {
+    width: 100%;
+    font-size: 1rem;
+    margin-left: 20px;
+  }
+}
