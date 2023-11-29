@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito&display=swap');
+
 :root {
   --toast-dark: #78fad1;
   --toast-light: #ffffff;
@@ -10,16 +12,71 @@
 
 body {
   display: flex;
-  align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: var(--toast-dark);
+  background-color: gray;
+  overflow: hidden;
+  font-family: "Nunito", sans-serif;
 }
 
 button {
   height: 70px;
   width: 400px;
   font-size: 2em;
+}
+
+#cube-edit-page {
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#color-picker-container {
+  position: relative;
+  height: fit-content;
+  display: flex;
+  justify-content: center;
+  margin: 5vh auto;
+  width: 100%;
+}
+
+.color-picker {
+  height: 2.5vw;
+  width: 2.5vw;
+  margin: 0.5vw;
+  border: 6px solid black;
+}
+
+.color-picker.selected {
+  height: 3vw;
+  width: 3vw;
+}
+
+.color-picker:hover, .cube-square:hover {
+  opacity: 0.7;
+}
+
+.cube-square {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  position: absolute;
+  aspect-ratio: 1 / 1;
+  border: 3px solid black;
+}
+
+#cube-edit-container {
+  aspect-ratio: 4 / 3;
+  position: relative;
+  height: calc(0.6 * min(3 / 4 * 100vw, 100vh));
+}
+
+#cube-edit-button-container {
+  display: flex;
+  justify-content: space-between;
+  width: 80vw;
+  margin: 5vh auto;
 }
 
 /* 
@@ -36,7 +93,7 @@ button {
   align-items: center;
 }
 .notifications .toast {
-  width: 400px;
+  width: 20vw;
   position: relative;
   overflow: hidden;
   list-style: none;
@@ -81,7 +138,7 @@ button {
 .toast::before {
   position: absolute;
   content: "";
-  height: 3px;
+  height: 5px;
   width: 100%;
   bottom: 0px;
   left: 0px;
@@ -108,7 +165,7 @@ button {
   background: var(--toast-random);
 }
 .toast .column i {
-  font-size: 1.75rem;
+  font-size: 4rem;
 }
 .toast.success .column i {
   color: var(--toast-success);
@@ -126,11 +183,13 @@ button {
   color: var(--toast-random);
 }
 .toast .column span {
-  font-size: 1.07rem;
-  margin-left: 12px;
+  font-size: 2rem;
+  margin-left: 24px;
 }
 .toast i:last-child {
   color: #aeb0d7;
+  font-size: 3rem;
+  margin-left: 24px;
   cursor: pointer;
 }
 .toast i:last-child:hover {
@@ -142,7 +201,7 @@ button {
   }
   .notifications .toast {
     width: 100%;
-    font-size: 1rem;
-    margin-left: 20px;
+    font-size: 2rem;
+    margin-left: 40px;
   }
 }

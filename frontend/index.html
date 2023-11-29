@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="styles.css" rel="stylesheet" />
-    <script src="src/videoCapture.js"></script>
+    <script src="src/script.js"></script>
     <script src="src/toast.js"></script>
 
     <!-- Font Awesome icons -->
@@ -19,15 +19,37 @@
     <!-- Toast notifications -->
     <ul class="notifications"></ul>
 
+    <!-- Welcoming the user and getting the cube steps -->
     <div id="home-page">
-      
+      <h1 id="home-page-title">Rubik's Cube Solver</h1> 
+      <input type="number" placeholder="Enter cube size...">
+      <button onclick="toggleVideoReceivingState(true);">Begin</button>
     </div>
 
-    <div id="video-stream-input">
+    <!-- Performing CV on the cube -->
+    <div id="video-stream-page" hidden="hidden">
       <canvas id="video-canvas" hidden="hidden"></canvas>
       <video id="video-cam"></video>
-      <button onclick="startVideoReceiving();"> Submit </button>
-      <button onclick="endVideoReceiving();"> Finish </button>
+      <button onclick="startVideoReceiving();"> Start Recording </button>
+      <button onclick="endVideoReceiving();"> Next </button>
     </div>
+
+    <!-- Editing the cube after CV is done -->
+    <div id="cube-edit-page" hidden="hidden">
+      <div id="color-picker-container">
+        <div id="color-picker-red" class="color-picker" style="background-color: #ff0000"></div>
+        <div id="color-picker-orange" class="color-picker" style="background-color: #ff9900"></div>
+        <div id="color-picker-yellow" class="color-picker" style="background-color: #ffee00"></div>
+        <div id="color-picker-green" class="color-picker" style="background-color: #00ff00"></div>
+        <div id="color-picker-blue" class="color-picker" style="background-color: #0000ff"></div>
+        <div id="color-picker-white" class="color-picker" style="background-color: #ffffff"></div>
+      </div>
+      <div id="cube-edit-container"></div>
+      <div id="cube-edit-button-container">
+        <button onclick="toggleVideoReceivingState(true);">Back</button>
+        <button onclick="finishCubeEditing();">Solve</button>
+      </div>
+    </div>
+
   </body>
 </html>

@@ -5,6 +5,11 @@ toastDetails = {
     label: "error",
     text: "Video not found. Wait or skip this part.",
     icon: "fa-triangle-exclamation"
+  },
+  cubeEditIncomplete: {
+    label: "error",
+    text: "Cube incomplete. Fill in the black squares.",
+    icon: "fa-triangle-exclamation"
   }
 }
 
