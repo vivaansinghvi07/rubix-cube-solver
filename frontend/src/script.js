@@ -21,6 +21,7 @@ const COLORS = {
 }
 const BORDER_WIDTH = 3;
 
+// stores global variables in a somewhat organized fashion
 let globalState = {
   userVideo: {
     mounted: false,
@@ -42,6 +43,7 @@ let globalState = {
   }
 };
 
+// closes each track in a video stream
 function closeVidStream(stream) {
   for (const track of stream.getTracks()) {
     track.stop();
@@ -62,15 +64,17 @@ function openWebcam() {
     video: true,
   })
     .then((vidStream) => {
-
+      
+      // attach the webcam stream to the video element
       let video = document.querySelector("#video-cam");
       if ("srcObject" in video) {
         video.srcObject = vidStream;
       } else {
         video.src = window.URL.createObjectURL(vidStream);
       }
+
+      // after video is successfully mounted
       video.onloadedmetadata = () => {
-        
         if (globalState.pageState === STATE.VIDEO_STREAM) {
           video.play();
           globalState.userVideo.mounted = true;
@@ -86,66 +90,82 @@ function openWebcam() {
     });
 }
 
+// procedurally send video frames to the websocket server
 function sendFrames(canvas, ctx) {
   
+  // send one frame
   ctx.drawImage(globalState.userVideo.video, 0, 0, canvas.width, canvas.height);
   img = canvas.toDataURL("image/png").split(";base64,")[1];
   globalState.webSocketConnection.socket.send(JSON.stringify({
     type: "frame", data: img
   }));
 
+  // if we are done, break, otherwise execute the same function again
   if (!globalState.userVideo.sending) {
     return;
   }
-  
   setTimeout(() => {
     sendFrames(canvas, ctx)
   }, 100); // about ten images per second
 }
 
+// setup variables and begins sending frames to the server
 function startVideoReceiving() {
+
+  // make sure: the video is up, the server is connected, and the video is not sending already
   if (!globalState.userVideo.mounted || !globalState.webSocketConnection.socket || globalState.userVideo.sending) {
     createToast("videoNotMountedWarning");
     return;
   }
   globalState.userVideo.sending = true;
 
+  // setup canvas and begin sending frames
   const canvas = document.querySelector("#video-canvas")
   const ctx = canvas.getContext('2d');
-
-  canvas.width = video.clientWidth;
-  canvas.height = video.clientHeight;
+  canvas.width = globalState.userVideo.video.clientWidth;
+  canvas.height = globalState.userVideo.video.clientHeight;
   sendFrames(canvas, ctx);
 }
 
+// exit the video streaming, and tell the socket server that it is done
 function endVideoReceiving() {
   if (globalState.userVideo.sending) {
     globalState.userVideo.sending = false;
     globalState.webSocketConnection.socket.send(JSON.stringify({
-      type: "finish"
+      type: "finish"  // sending this message prompts a response from the server with the read cube
     }));
   }
-  toggleCubeModState(true);
+  toggleCubeEditState(true);  // go to the next part of the process
 }
 
+// toggles the state for video receiving
 function toggleVideoReceivingState(on) {
   if (on) {
+
+    // disable all the other states, begin webcam streaming
     globalState.pageState = STATE.VIDEO_STREAM;
     allStatesOffExcept(STATE.VIDEO_STREAM);
     document.querySelector("#video-stream-page").removeAttribute("hidden");
     openWebcam();
   } else {
+
+    // close the webcam stream
     if (globalState.userVideo.video) {
       globalState.userVideo.video.pause();
       closeVidStream(globalState.userVideo.stream)
     }
     document.querySelector("#video-stream-page").setAttribute("hidden", "hidden");
+
+    // unset variables
     globalState.userVideo.sending = false;
     globalState.userVideo.mounted = false;
+    globalState.userVideo.video = undefined;
+    globalState.userVideo.stream = undefined;
   }
 }
 
-function toggleCubeModState(on) {  // uses visibility because it acts weird
+// toggles the cube editing state
+function toggleCubeEditState(on) {  // uses visibility because it acts weird
   if (on) {
     globalState.pageState = STATE.CUBE_EDIT;
     allStatesOffExcept(STATE.CUBE_EDIT);
@@ -156,6 +176,7 @@ function toggleCubeModState(on) {  // uses visibility because it acts weird
   }
 }
 
+// toggles the home page state
 function toggleHomePageState(on) {
   if (on) {
     globalState.pageState = STATE.HOME_PAGE;
@@ -166,17 +187,15 @@ function toggleHomePageState(on) {
   }
 }
 
-function getSquareColor(colorChar) {
-  if (colorChar in COLORS) {
-    return COLORS[colorChar];
-  }
-}
-
+// get id of a square in the cube edit stage given a position in the simple string
 function getSquareID(position) {
   return `cube-square-${position}`;
 }
 
+// generate the image of the cube which is edited by the user
 function generateCubeFaces() {
+  
+  // setup, setting variables 
   const N = globalState.cubeObject.N;
   if (!globalState.cubeObject.simple_string) {
     globalState.cubeObject.simple_string = " ".repeat(N * N * 6);
@@ -229,7 +248,7 @@ function generateCubeFaces() {
 
         // put the face onto display
         let colorChar = squareArray[position];
-        let color = getSquareColor(colorChar);
+        let color = COLORS[colorChar];
         container.innerHTML += `<div class="cube-square" id="${id}"` + 
                                     `style="width: ${width}px; left: ${left}px; ` +
                                            `top: ${top}px; background-color: ${color}; ` + 
@@ -246,11 +265,13 @@ function generateCubeFaces() {
   });
 }
 
+// reconstruct a "simple string" representation of the cube after the user is done editing
 function finishCubeEditing() {
-
-  // build a new "simple string" representation of the cube using current colors
+  
   const simpleStringLength = globalState.cubeObject.N * globalState.cubeObject.N * 6;
   const simpleStringArray = new Array(simpleStringLength);
+
+  // build for each position
   for (let i = 0; i < simpleStringLength; i++) {
     let targetElement = document.getElementById(getSquareID(i));
     let color = targetElement.style.backgroundColor;   // I'm pretty sure this is the HEX value
@@ -264,13 +285,14 @@ function finishCubeEditing() {
   }
   const newSimpleString = simpleStringArray.join("");
   
+  // go on to the next state, where the user interacts with the built cube
   toggleCubePlayState(true);
-  console.log(newSimpleString);
 }
 
+// turn off every state except for the given one
 function allStatesOffExcept(state) { 
   if (state !== STATE.CUBE_EDIT)
-    toggleCubeModState(false);
+    toggleCubeEditState(false);
   if (state !== STATE.VIDEO_STREAM)
     toggleVideoReceivingState(false);
   if (state !== STATE.HOME_PAGE)
@@ -286,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
     switch (dataObj.type) {
       case "cv_finish":
         globalState.cubeObject.simple_string = dataObj.cube;
-        toggleCubeModState(true);
+        toggleCubeEditState(true);
         break;
     }
   });
@@ -315,6 +337,6 @@ document.addEventListener("DOMContentLoaded", () => {
   globalState.cubeObject.N = 5;
   globalState.cubeObject.simple_string = "wygryyywoboygwbogwrrrowwbworbrrgywgogogywybggrwrwgybogoobrywgbbywybrrbwrybborwyoogrbgwgrbryooogywbgobrgwgyywwryowggooywbgbybbwybggrrowwbrybooroboyyrgr"
   
-  toggleCubeModState(true);
+  toggleCubeEditState(true);
 
 });
