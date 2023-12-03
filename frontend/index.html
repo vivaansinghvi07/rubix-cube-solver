@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="styles.css" rel="stylesheet" />
+    <script src="lib/twistysim.min.js"></script>
     <script src="src/script.js"></script>
     <script src="src/toast.js"></script>
 
@@ -20,22 +21,27 @@
     <ul class="notifications"></ul>
 
     <!-- Welcoming the user and getting the cube steps -->
-    <div id="home-page">
-      <h1 id="home-page-title">Rubik's Cube Solver</h1> 
-      <input type="number" placeholder="Enter cube size...">
-      <button onclick="toggleVideoReceivingState(true);">Begin</button>
+    <div class="page" id="home-page">
+      <h1 id="home-page-title">Rubik's Cube Solver</h1>
+      <input type="number" id="home-page-size-input" placeholder="Enter cube size...">
+      <div class="button-container" id="home-page-button-container">
+        <button onclick="submitHomePageBegin();">Begin</button>
+      </div> 
     </div>
 
     <!-- Performing CV on the cube -->
-    <div id="video-stream-page" hidden="hidden">
+    <div class="page" id="video-stream-page" hidden="hidden">
       <canvas id="video-canvas" hidden="hidden"></canvas>
       <video id="video-cam"></video>
-      <button onclick="startVideoReceiving();"> Start Recording </button>
-      <button onclick="endVideoReceiving();"> Next </button>
+      <div class="button-container">
+        <button onclick="toggleHomePageState(true);"> Back </button>
+        <button onclick="startVideoReceiving();"> Start Recording </button>
+        <button onclick="endVideoReceiving();"> Next </button>
+      </div>
     </div>
 
     <!-- Editing the cube after CV is done -->
-    <div id="cube-edit-page" hidden="hidden">
+    <div class="page" id="cube-edit-page" hidden="hidden">
       <div id="color-picker-container">
         <div id="color-picker-red" class="color-picker" style="background-color: #ff0000"></div>
         <div id="color-picker-orange" class="color-picker" style="background-color: #ff9900"></div>
@@ -45,11 +51,15 @@
         <div id="color-picker-white" class="color-picker" style="background-color: #ffffff"></div>
       </div>
       <div id="cube-edit-container"></div>
-      <div id="cube-edit-button-container">
+      <div class="button-container">
         <button onclick="toggleVideoReceivingState(true);">Back</button>
         <button onclick="finishCubeEditing();">Solve</button>
       </div>
     </div>
 
+    <!-- Playing with the cube after it is made -->
+    <div class="page" id="cube-play-page">
+      <div id="interactive-cube"></div>
+    </div>
   </body>
 </html>
