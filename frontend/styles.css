@@ -25,11 +25,42 @@ button {
   font-size: 2em;
 }
 
-#cube-edit-page {
+h1 {
+  text-align: center;
+  color: white;
+  font-size: 7rem; 
+  flex-basis: 100%;
+}
+
+.page {
   width: 100vw;
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  width: 80vw;
+  margin: 5vh auto;
+}
+
+#home-page-button-container {
+  justify-content: center;
+}
+
+#home-page-size-input {
+  height: fit-content;
+  font-size: 2rem;
+  width: 20vw;
+  padding: 10px;
+}
+
+#video-cam {
+  margin-top: 50px;
+  width: 80vw;
+  height: 60vh;
 }
 
 #color-picker-container {
@@ -70,13 +101,6 @@ button {
   aspect-ratio: 4 / 3;
   position: relative;
   height: calc(0.6 * min(3 / 4 * 100vw, 100vh));
-}
-
-#cube-edit-button-container {
-  display: flex;
-  justify-content: space-between;
-  width: 80vw;
-  margin: 5vh auto;
 }
 
 /* 
@@ -188,7 +212,7 @@ button {
 }
 .toast i:last-child {
   color: #aeb0d7;
-  font-size: 3rem;
+  font-size: 2rem;
   margin-left: 24px;
   cursor: pointer;
 }
