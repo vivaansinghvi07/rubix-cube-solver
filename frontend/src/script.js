@@ -2,7 +2,8 @@
 const STATE = {
   VIDEO_STREAM: "video-stream",
   CUBE_EDIT: "cube-edit",
-  HOME_PAGE: "home-page"
+  HOME_PAGE: "home-page",
+  CUBE_PLAY: "cube-play"
 }
 const COLORS = {
   'r': "#ff0000",
@@ -34,7 +35,7 @@ let globalState = {
   },
   cubeObject: {
     N: undefined,
-    simple_string: undefined
+    simpleString: undefined
   },
   pageState: undefined,
   currentColor: {
@@ -92,6 +93,11 @@ function openWebcam() {
 
 // procedurally send video frames to the websocket server
 function sendFrames(canvas, ctx) {
+
+  // if we are done, break, otherwise execute the same function again
+  if (!globalState.userVideo.sending) {
+    return;
+  }
   
   // send one frame
   ctx.drawImage(globalState.userVideo.video, 0, 0, canvas.width, canvas.height);
@@ -100,10 +106,6 @@ function sendFrames(canvas, ctx) {
     type: "frame", data: img
   }));
 
-  // if we are done, break, otherwise execute the same function again
-  if (!globalState.userVideo.sending) {
-    return;
-  }
   setTimeout(() => {
     sendFrames(canvas, ctx)
   }, 100); // about ten images per second
@@ -114,7 +116,7 @@ function startVideoReceiving() {
 
   // make sure: the video is up, the server is connected, and the video is not sending already
   if (!globalState.userVideo.mounted || !globalState.webSocketConnection.socket || globalState.userVideo.sending) {
-    createToast("videoNotMountedWarning");
+    createErrorToast("Video not found. Wait or skip this part.");
     return;
   }
   globalState.userVideo.sending = true;
@@ -140,12 +142,14 @@ function endVideoReceiving() {
 
 // toggles the state for video receiving
 function toggleVideoReceivingState(on) {
+  const page = document.querySelector("#video-stream-page");
   if (on) {
 
     // disable all the other states, begin webcam streaming
     globalState.pageState = STATE.VIDEO_STREAM;
-    allStatesOffExcept(STATE.VIDEO_STREAM);
-    document.querySelector("#video-stream-page").removeAttribute("hidden");
+    turnAllStatesOffExcept(STATE.VIDEO_STREAM);
+    page.removeAttribute("hidden");
+    page.style.display = "flex";
     openWebcam();
   } else {
 
@@ -154,7 +158,8 @@ function toggleVideoReceivingState(on) {
       globalState.userVideo.video.pause();
       closeVidStream(globalState.userVideo.stream)
     }
-    document.querySelector("#video-stream-page").setAttribute("hidden", "hidden");
+    page.setAttribute("hidden", "hidden");
+    page.style.display = "none"; // TODO: APPLY THIS LOGIC FOR EVERYTHING ELSE 
 
     // unset variables
     globalState.userVideo.sending = false;
@@ -166,25 +171,71 @@ function toggleVideoReceivingState(on) {
 
 // toggles the cube editing state
 function toggleCubeEditState(on) {  // uses visibility because it acts weird
+  const page = document.querySelector("#cube-edit-page");
   if (on) {
     globalState.pageState = STATE.CUBE_EDIT;
-    allStatesOffExcept(STATE.CUBE_EDIT);
-    document.querySelector("#cube-edit-page").style.visibility = "visible"; 
+    turnAllStatesOffExcept(STATE.CUBE_EDIT);
+    page.style.display = "flex"; 
+    page.removeAttribute("hidden")
     generateCubeFaces();
   } else {
-    document.querySelector("#cube-edit-page").style.visibility = "hidden";
+    page.style.display = "none";
+    page.setAttribute("hidden", "hidden")
   }
 }
 
 // toggles the home page state
 function toggleHomePageState(on) {
+  const page = document.querySelector("#home-page");
   if (on) {
     globalState.pageState = STATE.HOME_PAGE;
-    allStatesOffExcept(STATE.HOME_PAGE);
-    document.querySelector("#home-page").removeAttribute("hidden");
+    turnAllStatesOffExcept(STATE.HOME_PAGE);
+    page.style.display = "flex";
+    page.removeAttribute("hidden");
   } else {
-    document.querySelector("#home-page").setAttribute("hidden", "hidden");
+    page.style.display = "none";
+    page.setAttribute("hidden", "hidden")
   }
+}
+
+// toggles the state with playing with the cube 
+function toggleCubePlayState(on) {
+  const page = document.querySelector("#cube-play-page");
+  if (on) {
+    globalState.pageState = STATE.CUBE_PLAY;
+    turnAllStatesOffExcept(STATE.CUBE_PLAY);
+    page.style.display = "flex";
+    page.removeAttribute("hidden");
+    generateInteractiveCube();
+  } else {
+    page.style.display = "none";
+    page.setAttribute("hidden", "hidden")
+  }
+}
+
+// starts the process, managing input from the home page 
+function submitHomePageBegin() {
+  
+  // determine cube size
+  const N = parseInt(document.querySelector("#home-page-size-input").value);
+  if (N <= 0) {
+    createErrorToast("Cube size must be at least 1.");
+    return;
+  } 
+
+  // initialize the websocket server with the cube size 
+  try {
+    globalState.webSocketConnection.socket.send(JSON.stringify({
+      type: "init", size: N
+    }));
+    globalState.cubeObject.N = N;
+  } catch {
+    createToast("Server not connected. Try again in a bit.");
+    return;
+  }
+
+  // set cube size and go to the next thing
+  toggleVideoReceivingState(true);
 }
 
 // get id of a square in the cube edit stage given a position in the simple string
@@ -197,10 +248,10 @@ function generateCubeFaces() {
   
   // setup, setting variables 
   const N = globalState.cubeObject.N;
-  if (!globalState.cubeObject.simple_string) {
-    globalState.cubeObject.simple_string = " ".repeat(N * N * 6);
+  if (!globalState.cubeObject.simpleString) {
+    globalState.cubeObject.simpleString = " ".repeat(N * N * 6);
   }
-  const squareArray = Array.from(globalState.cubeObject.simple_string);
+  const squareArray = Array.from(globalState.cubeObject.simpleString);
   const container = document.querySelector("#cube-edit-container");
   const squareWidth = Math.round(container.clientWidth / (4 * N));
 
@@ -265,6 +316,44 @@ function generateCubeFaces() {
   });
 }
 
+// turns the simple string into the form that TTk can work with
+function transformSimpleString(simpleString, N) {
+  
+  // helper function to flip a face vertically (across a horizontal axis)
+  const flipFaceVertically = (faceString) => {
+    
+    // initialize variables
+    const faceStringArray = Array.from(faceString);
+    const newFaceString = new Array(faceStringArray.length);
+    
+    // map the vertical flipping
+    for (let col = 0; col < N; col++) {
+      for (let row = 0; row < Math.ceil(N / 2); row++) {
+        newFaceString[row * N + col] = faceStringArray[(N - row - 1) * N + col];
+        newFaceString[(N - row - 1) * N + col] = faceStringArray[row * N + col];
+      }
+    }
+    return newFaceString.join("");
+  }
+
+  // construct the new string representation of the cube
+  let newSimpleString = "";
+  const ssFaceToTTk = [5, 3, 0, 4, 1, 2];
+  for (const faceIndex of ssFaceToTTk) {
+    let faceString = simpleString.substring(N * N * faceIndex, N * N * (faceIndex + 1));
+    if (faceIndex !== 5)
+      faceString = flipFaceVertically(faceString);
+    newSimpleString += faceString;
+  }
+  return newSimpleString;
+}
+
+function generateInteractiveCube() {
+  const { N, simpleString } = globalState.cubeObject;
+  adjustedSimpleString = transformSimpleString(simpleString, N);
+  TTk.AlgorithmPuzzle(N).fc(adjustedSimpleString).movePeriod(50).alg("R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U'")("#interactive-cube").movePeriod(5);
+}
+
 // reconstruct a "simple string" representation of the cube after the user is done editing
 function finishCubeEditing() {
   
@@ -278,36 +367,39 @@ function finishCubeEditing() {
     let [r, g, b] = Array.from(color.matchAll(/[0-9]+/g)).map(n => parseInt(n[0]));
     let colorHex = "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);  // https://stackoverflow.com/a/5624139/22164400
     if (!(colorHex in COLORS)) {
-      createToast("cubeEditIncomplete");
+      createErrorToast("Cube incomplete. Fill in the black squares.");
       return;
     }
     simpleStringArray[i] = COLORS[colorHex];  
   }
   const newSimpleString = simpleStringArray.join("");
-  
+  globalState.cubeObject.simpleString = newSimpleString;
+
   // go on to the next state, where the user interacts with the built cube
   toggleCubePlayState(true);
 }
 
 // turn off every state except for the given one
-function allStatesOffExcept(state) { 
+function turnAllStatesOffExcept(state) { 
   if (state !== STATE.CUBE_EDIT)
     toggleCubeEditState(false);
   if (state !== STATE.VIDEO_STREAM)
     toggleVideoReceivingState(false);
   if (state !== STATE.HOME_PAGE)
     toggleHomePageState(false);
+  if (state !== STATE.CUBE_PLAY)
+    toggleCubePlayState(false);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const ws = new WebSocket("ws://localhost:8080/");
+  const ws = new WebSocket("ws://localhost:8090/");
   
   // handle websocket messages coming FROM the server 
   ws.addEventListener("message", (data) => {
     const dataObj = JSON.parse(data);
     switch (dataObj.type) {
       case "cv_finish":
-        globalState.cubeObject.simple_string = dataObj.cube;
+        globalState.cubeObject.simpleString = dataObj.cube;
         toggleCubeEditState(true);
         break;
     }
@@ -328,15 +420,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   globalState.webSocketConnection.socket = ws;
-  setTimeout(() => {
-    ws.send(JSON.stringify({
-      type: "init",
-      size: 3
-    }));
-  }, 1000);
   globalState.cubeObject.N = 5;
-  globalState.cubeObject.simple_string = "wygryyywoboygwbogwrrrowwbworbrrgywgogogywybggrwrwgybogoobrywgbbywybrrbwrybborwyoogrbgwgrbryooogywbgobrgwgyywwryowggooywbgbybbwybggrrowwbrybooroboyyrgr"
+  globalState.cubeObject.simpleString = "wygryyywoboygwbogwrrrowwbworbrrgywgogogywybggrwrwgybogoobrywgbbywybrrbwrybborwyoogrbgwgrbryooogywbgobrgwgyywwryowggooywbgbybbwybggrrowwbrybooroboyyrgr"
   
   toggleCubeEditState(true);
-
 });
