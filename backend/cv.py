@@ -1,4 +1,3 @@
-from operator import is_
 import cv2
 import numpy as np
 from enum import Enum
