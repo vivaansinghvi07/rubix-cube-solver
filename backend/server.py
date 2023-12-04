@@ -14,10 +14,10 @@ from pycubing.solver.solver3x3 import (
     solve_second_layer_edges, solve_oll_edges, solve_oll_corners,
     solve_pll_corners, solve_pll_edges
 )
-from pycubing.solver.solver2x2 import cube2x2_from_3x3, orient_top_until_solve
+from pycubing.solver.solver2x2 import orient_top_until_solve
 from pycubing.solver.solverNxN import solve_centers, solve_edges
 from pycubing.solver import PIPELINE_3x3, PIPELINE_2x2, PIPELINE_NxN
-from pycubing.utils import convert_3x3_moves_to_2x2, convert_3x3_moves_to_NxN
+from pycubing.utils import SolvePipeline, convert_3x3_moves_to_2x2, convert_3x3_moves_to_NxN
 
 FUNCTION_LIST_ATTR = "_SolvePipeline__funcs"
 FUNCTION_TO_EXPLANATIONS = {
@@ -35,12 +35,27 @@ FUNCTION_TO_EXPLANATIONS = {
 }
 
 
-def add_to_response(moves: list[str], func: Callable, response: list[dict]) -> None:
+def add_to_response(moves: list[str], func: Callable, cube: Cube, response: list[dict]) -> None:
     response.append({
         "moves": moves, 
-        "desc": FUNCTION_TO_EXPLANATIONS[func]
+        "desc": FUNCTION_TO_EXPLANATIONS[func],
+        "simple_string": cube.to_simple_string()
     })
 
+def add_pipeline_to_response(cube: Cube, response: list[dict], pipeline: SolvePipeline):
+    move_cube, move_function = cube, lambda x: x
+    different_cube = pipeline == (PIPELINE_3x3 and cube.N > 3) or pipeline == PIPELINE_2x2
+    if different_cube:
+        move_cube = cube.get_3x3()
+        move_function = lambda x: convert_3x3_moves_to_NxN(x, cube.N)
+        if cube.N == 2: 
+            move_function = convert_3x3_moves_to_2x2 
+    for func in getattr(pipeline, FUNCTION_LIST_ATTR):
+        moves = move_function(func(move_cube))
+        if different_cube:
+            cube.parse(" ".join(moves))
+        add_to_response(moves, func, cube, response)
+                    
 def base64_to_image(b64_str: str) -> cv2.Mat:
     np_buf = np.frombuffer(base64.b64decode(b64_str), np.uint8)
     img = cv2.imdecode(np_buf, cv2.IMREAD_COLOR)
@@ -48,7 +63,6 @@ def base64_to_image(b64_str: str) -> cv2.Mat:
 
 async def handler(websocket: websockets.WebSocketServerProtocol):
     translator = None
-    user_cube = None
     async for message in websocket:
         data = json.loads(message)
         match data["type"]:
@@ -71,24 +85,14 @@ async def handler(websocket: websockets.WebSocketServerProtocol):
                     case 1:
                         pass
                     case 2:
-                        cube_3x3 = cube.get_3x3()
-                        for func in getattr(PIPELINE_2x2, FUNCTION_LIST_ATTR):
-                            moves = convert_3x3_moves_to_2x2(func(cube_3x3))
-                            add_to_response(moves, func, response)
-                        cube = cube2x2_from_3x3(cube_3x3)
-                        add_to_response(orient_top_until_solve(cube), orient_top_until_solve, response)
+                        add_pipeline_to_response(cube, response, PIPELINE_2x2)
+                        new_moves = orient_top_until_solve(cube)
+                        add_to_response(new_moves, orient_top_until_solve, cube, response)
                     case 3:
-                        for func in getattr(PIPELINE_3x3, FUNCTION_LIST_ATTR):
-                            moves = func(cube)
-                            add_to_response(moves, func, response)
-                    case N:
-                        for func in getattr(PIPELINE_NxN, FUNCTION_LIST_ATTR):
-                            moves = func(cube)
-                            add_to_response(moves, func, response)
-                        cube_3x3 = cube.get_3x3()
-                        for func in getattr(PIPELINE_3x3, FUNCTION_LIST_ATTR):
-                            moves = convert_3x3_moves_to_NxN(func(cube_3x3), N)
-                            add_to_response(moves, func, response)
+                        add_pipeline_to_response(cube, response, PIPELINE_3x3)
+                    case _:
+                        add_pipeline_to_response(cube, response, PIPELINE_NxN)
+                        add_pipeline_to_response(cube, response, PIPELINE_3x3)
                 await websocket.send(json.dumps({
                     "type": "solve", "moves": response
                 }))
