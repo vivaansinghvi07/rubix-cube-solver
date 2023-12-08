@@ -41,6 +41,10 @@ let globalState = {
   currentColor: {
     id: undefined,
     color: undefined
+  },
+  solution: {
+    stepIndex: undefined,
+    stepList: undefined
   }
 };
 
@@ -121,6 +125,11 @@ function startVideoReceiving() {
   }
   globalState.userVideo.sending = true;
 
+  // create a new ImageToCube object in the server 
+  globalState.webSocketConnection.socket.send(JSON.stringify({
+    type: "init", size: globalState.cubeObject.N
+  }));
+
   // setup canvas and begin sending frames
   const canvas = document.querySelector("#video-canvas")
   const ctx = canvas.getContext('2d');
@@ -133,10 +142,10 @@ function startVideoReceiving() {
 function endVideoReceiving() {
   if (globalState.userVideo.sending) {
     globalState.userVideo.sending = false;
-    globalState.webSocketConnection.socket.send(JSON.stringify({
-      type: "finish"  // sending this message prompts a response from the server with the read cube
-    }));
   }
+  globalState.webSocketConnection.socket.send(JSON.stringify({
+    type: "finish"  // sending this message prompts a response from the server with the read cube
+  }));
   toggleCubeEditState(true);  // go to the next part of the process
 }
 
@@ -159,7 +168,7 @@ function toggleVideoReceivingState(on) {
       closeVidStream(globalState.userVideo.stream)
     }
     page.setAttribute("hidden", "hidden");
-    page.style.display = "none"; // TODO: APPLY THIS LOGIC FOR EVERYTHING ELSE 
+    page.style.display = "none"; 
 
     // unset variables
     globalState.userVideo.sending = false;
@@ -206,7 +215,10 @@ function toggleCubePlayState(on) {
     turnAllStatesOffExcept(STATE.CUBE_PLAY);
     page.style.display = "flex";
     page.removeAttribute("hidden");
-    generateInteractiveCube();
+    document.querySelector("#solve-start-button").removeAttribute("hidden");
+    document.querySelector("#solve-next-button").setAttribute("hidden", "hidden");
+    document.querySelector("#solve-prev-button").setAttribute("hidden", "hidden");
+    generateInteractiveCube(globalState.cubeObject.simpleString);
   } else {
     page.style.display = "none";
     page.setAttribute("hidden", "hidden")
@@ -228,13 +240,14 @@ function submitHomePageBegin() {
     globalState.webSocketConnection.socket.send(JSON.stringify({
       type: "init", size: N
     }));
-    globalState.cubeObject.N = N;
   } catch {
-    createToast("Server not connected. Try again in a bit.");
+    createErrorToast("Server not connected. Try again in a bit.");
     return;
   }
 
   // set cube size and go to the next thing
+  globalState.cubeObject.N = N;
+  globalState.cubeObject.simpleString = undefined;
   toggleVideoReceivingState(true);
 }
 
@@ -289,17 +302,17 @@ function generateCubeFaces() {
       for (let x = 0; x < N; ++x) {
 
         // apply stylings based on location
-        let width = squareWidth;
-        let left = squareWidth * (x + leftOffset);
-        let top = squareWidth * ((face === 5 ? N - y - 1 : y) + topOffset);
+        const width = squareWidth;
+        const left = squareWidth * (x + leftOffset);
+        const top = squareWidth * ((face === 5 ? N - y - 1 : y) + topOffset);
 
         // determine what position it is on the array
-        let position = face * N * N + y * N + x;
-        let id = getSquareID(position);
+        const position = face * N * N + y * N + x;
+        const id = getSquareID(position);
 
         // put the face onto display
-        let colorChar = squareArray[position];
-        let color = COLORS[colorChar];
+        const colorChar = squareArray[position];
+        const color = COLORS[colorChar];
         container.innerHTML += `<div class="cube-square" id="${id}"` + 
                                     `style="width: ${width}px; left: ${left}px; ` +
                                            `top: ${top}px; background-color: ${color}; ` + 
@@ -348,10 +361,12 @@ function transformSimpleString(simpleString, N) {
   return newSimpleString;
 }
 
-function generateInteractiveCube() {
-  const { N, simpleString } = globalState.cubeObject;
+function generateInteractiveCube(simpleString, alg) {
+  const { N } = globalState.cubeObject;
+  const width = Math.min(window.innerWidth, window.innerHeight) / 2;
   adjustedSimpleString = transformSimpleString(simpleString, N);
-  TTk.AlgorithmPuzzle(N).fc(adjustedSimpleString).movePeriod(50).alg("R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U' R U R' U'")("#interactive-cube").movePeriod(5);
+  document.querySelector("#interactive-cube").innerHTML = "";
+  TTk.AlgorithmPuzzle(N).showAlg(false).size({width: width, height: width}).fc(adjustedSimpleString).alg(alg).movePeriod(50)("#interactive-cube");
 }
 
 // reconstruct a "simple string" representation of the cube after the user is done editing
@@ -376,6 +391,9 @@ function finishCubeEditing() {
   globalState.cubeObject.simpleString = newSimpleString;
 
   // go on to the next state, where the user interacts with the built cube
+  globalState.webSocketConnection.socket.send(JSON.stringify({
+    type: "solve", simple_string: newSimpleString
+  }))
   toggleCubePlayState(true);
 }
 
@@ -391,19 +409,52 @@ function turnAllStatesOffExcept(state) {
     toggleCubePlayState(false);
 }
 
+// goes to the next step in the solution generated by the server
+function goToNextSolveStep(stepIncrement) {
+
+  // continue if the solution hasn't been generated yet
+  let { stepIndex, stepList } = globalState.solution;
+  if (!stepList) {
+    createErrorToast("Solution not generated by server yet. Please wait.");
+    return;
+  } else if (stepIndex + stepIncrement < 0 || stepIndex + stepIncrement >= stepList.length) {
+    createErrorToast("Going too far back or too far forwards in solution.");
+    return;
+  }
+
+  // remove the start button if starting
+  if (stepIncrement === 0) {
+    document.querySelector("#solve-start-button").setAttribute("hidden", "hidden");
+    document.querySelector("#solve-next-button").removeAttribute("hidden")
+    document.querySelector("#solve-prev-button").removeAttribute("hidden")
+  }
+
+  // go to the next step, render a cube with the new values
+  globalState.solution.stepIndex = stepIndex = stepIndex + stepIncrement; 
+  const { moves, desc, simple_string } = stepList[stepIndex];
+  generateInteractiveCube(simple_string, moves);
+  document.querySelector("#solution-step-description").innerHTML = desc;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const ws = new WebSocket("ws://localhost:8090/");
   
   // handle websocket messages coming FROM the server 
   ws.addEventListener("message", (data) => {
-    const dataObj = JSON.parse(data);
-    switch (dataObj.type) {
+    const dataObj = JSON.parse(data["data"]);
+    console.log(dataObj);
+    switch (dataObj["type"]) {
       case "cv_finish":
         globalState.cubeObject.simpleString = dataObj.cube;
         toggleCubeEditState(true);
         break;
+      case "solve":
+        globalState.solution.stepList = dataObj["moves"];
+        globalState.solution.stepIndex = 0;
+        break;
     }
   });
+  globalState.webSocketConnection.socket = ws;
 
   // for the color pickers, they handle their own clicks
   const colorPickers = Array.from(document.querySelectorAll(".color-picker"))
@@ -419,9 +470,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  globalState.webSocketConnection.socket = ws;
-  globalState.cubeObject.N = 5;
-  globalState.cubeObject.simpleString = "wygryyywoboygwbogwrrrowwbworbrrgywgogogywybggrwrwgybogoobrywgbbywybrrbwrybborwyoogrbgwgrbryooogywbgobrgwgyywwryowggooywbgbybbwybggrrowwbrybooroboyyrgr"
-  
-  toggleCubeEditState(true);
+  toggleHomePageState(true);
 });

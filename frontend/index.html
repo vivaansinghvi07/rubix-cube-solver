@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link href="styles.css" rel="stylesheet" />
     <script src="lib/twistysim.min.js"></script>
-    <script src="src/script.js"></script>
     <script src="src/toast.js"></script>
+    <script src="src/script.js"></script>
 
     <!-- Font Awesome icons -->
     <link
@@ -23,7 +23,7 @@
     <!-- Welcoming the user and getting the cube steps -->
     <div class="page" id="home-page">
       <h1 id="home-page-title">Rubik's Cube Solver</h1>
-      <input type="number" id="home-page-size-input" placeholder="Enter cube size...">
+      <input inputmode="numeric" pattern="[0-9]*" id="home-page-size-input" placeholder="Enter cube size...">
       <div class="button-container" id="home-page-button-container">
         <button onclick="submitHomePageBegin();">Begin</button>
       </div> 
@@ -60,6 +60,13 @@
     <!-- Playing with the cube after it is made -->
     <div class="page" id="cube-play-page">
       <div id="interactive-cube"></div>
+      <p id="solution-step-description"> Press the button below to begin. </p>
+      <div class="button-container">
+        <button id="solve-prev-button" onclick="goToNextSolveStep(-1);"> Previous Step </button>
+        <button id="solve-start-button" onclick="goToNextSolveStep(0);"> Begin Solve </button>
+        <button id="solve-next-button" onclick="goToNextSolveStep(1);"> Next Step </button>
+      </div>
     </div>
+
   </body>
 </html>

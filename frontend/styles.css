@@ -103,6 +103,13 @@ h1 {
   height: calc(0.6 * min(3 / 4 * 100vw, 100vh));
 }
 
+#solution-step-description {
+  text-align: center;
+  width: 100%;
+  font-size: 2rem;
+  color: white;
+}
+
 /* 
 * SECTION FOR TOAST 
 * https://dev.to/arafat4693/how-to-create-a-toast-notification-in-javascript-261d
