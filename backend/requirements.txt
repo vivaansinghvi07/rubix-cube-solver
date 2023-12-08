@@ -1,4 +1,5 @@
 numpy~=1.26.0
 pynterface==0.2.3
 opencv-python==4.8.0.76
-pycubing>=0.1.2
+pycubing>=0.1.5
+websockets==12.0
