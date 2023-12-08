@@ -36,3 +36,9 @@ This software is released under the MIT License.
 ## Contributing
 
 Contribute by opening a pull request or an issue, any help is appreciated!
+
+## Todo
+
+- Make the website look more clean and user-friendly
+- Add explanations on how to use the computer vision in the site
+- In frame-by-frame image translation, lock each center to a face for odd cubes.
