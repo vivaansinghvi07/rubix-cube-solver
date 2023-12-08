@@ -4,6 +4,8 @@ This is a project I made using my [pycubing](https://github.com/vivaansinghvi07/
 
 The `backend` and `frontend` folders contain code for the respective parts of the project. The `frontend` portion contains a simple website made of HTML/CSS/JS. The `backend` portion is a WebSockets server utilizing many computer vision functions defined in `cv.py`. For a step-by-step demonstration of these functions, view the [`cv_testing.ipynb`](https://github.com/vivaansinghvi07/rubix-cube-solver/blob/main/cv_testing.ipynb) file.
 
+Since instructions are not yet on the website, view `media/example_video.mov` to see how to use the computer vision process in the website.
+
 ## Usage 
 
 To use, you will need to host both the frontend and backend on your device. To do this, open two terminal windows, and on each of them, run the following commands:
