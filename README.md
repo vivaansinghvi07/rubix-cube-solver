@@ -6,6 +6,8 @@ The `backend` and `frontend` folders contain code for the respective parts of th
 
 Since instructions are not yet on the website, view `media/example_video.mov` to see how to use the computer vision process in the website.
 
+Helped by some ideas and suggestions from [Grace Feng](https://github.com/gracetic37).
+
 ## Usage 
 
 To use, you will need to host both the frontend and backend on your device. To do this, open two terminal windows, and on each of them, run the following commands:
